@@ -1,4 +1,8 @@
 # ACoT-VLA: Action Chain-of-Thought for Vision-Language-Action Models
+[![arXiv](https://img.shields.io/badge/arXiv-2601.11404-b31b1b.svg)](https://arxiv.org/abs/2601.11404)
+[![Hugging Face](https://img.shields.io/badge/arXiv-Paper-yellow.svg)](https://huggingface.co/papers/2601.11404)
+[![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 This is the **official implementation** of [**ACoT-VLA**](https://arxiv.org/abs/2601.11404), a novel paradigm designed to bridge the fundamental semantic-kinematic gap in modern robotic policies. By shifting the locus of reasoning from perception to action, ACoT-VLA enables robots to "think" in the language of actions.
 
@@ -15,6 +19,16 @@ Existing VLA models often rely on indirect reasoning like sub-task prediction (l
 * **Implicit Action Reasoner (IAR):** Extracts latent action priors from the internal representations of the VLM backbone using cross-attention modeling.
 
 * **Action Chain-of-Thought (ACoT):** Together, EAR and IAR co-form an Action Chain-of-Thought, a reasoning paradigm where the deliberative process is formulated as structured action intents, enabling grounded and long-horizon policy learning.![framework](docs/framework.png)
+
+---
+
+## News 
+
+- 🚀🚀 **The [test server](https://agibot-world.com/challenge2026/reasoning2action/quick-start) of AgiBot World Challenge @ ICRA 2026  is available now.**
+
+- 🔥🔥 The minimal version of training code for [AgiBot World Challenge @ ICRA 2026](https://agibot-world.com/challenge2026) - Reasoning to Action track have been released.
+
+- 🚀🚀 The training datasets of [AgiBot World Challenge @ ICRA 2026 - Reasoning to Action track](https://huggingface.co/datasets/agibot-world/AgiBotWorldChallenge-2026/tree/main/Reasoning2Action-Sim) have been released.
 
 ---
 
@@ -73,8 +87,8 @@ Our method delivers substantial gains in unseen-texture tracks and complex table
 We utilize **uv** to manage the Python environment.
 
 ```bash
-git clone <your_repo_url>
-cd acot-vla
+git clone https://github.com/AgibotTech/ACoT-VLA.git
+cd ACoT-VLA
 git submodule update --init --recursive
 GIT_LFS_SKIP_SMUDGE=1 uv sync
 GIT_LFS_SKIP_SMUDGE=1 uv pip install -e .
@@ -96,7 +110,7 @@ Follow the standardized pipeline to compute normalization statistics and launch 
 
 ```bash
 # Compute stats
-uv run scripts/compute_norm_stats.py --config-name acot_libero_config
+uv run scripts/compute_norm_stats.py --config-name <CONFIG_NAME>
 
 # Start training
 bash scripts/train.sh <CONFIG_NAME> <EXP_NAME>
