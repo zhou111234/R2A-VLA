@@ -53,6 +53,7 @@ class CheckpointWeightLoader(WeightLoader):
         # Add all missing LoRA weights.
         return _merge_params(loaded_params, params, missing_regex=".*lora.*")
 
+
 @dataclasses.dataclass(frozen=True)
 class ACOTCheckpointWeightLoader(WeightLoader):
     params_path: str
@@ -62,10 +63,8 @@ class ACOTCheckpointWeightLoader(WeightLoader):
         key_mapping = {
             "action_in_proj": "coarse_action_in_proj",
             "action_out_proj": "coarse_action_out_proj",
-
             "time_mlp_in": "coarse_time_mlp_in",
             "time_mlp_out": "coarse_time_mlp_out",
-
             "action_time_mlp_in": "coarse_action_time_mlp_in",
             "action_time_mlp_out": "coarse_action_time_mlp_out",
         }
@@ -77,8 +76,9 @@ class ACOTCheckpointWeightLoader(WeightLoader):
                 target_key = key_mapping[source_key]
                 loaded_params[target_key] = loaded_params[source_key]
                 print(f"[INFO] Re-mapped pretrained weight '{source_key}' -> '{target_key}' (for Reasoner)")
-                
+
         return _merge_params(loaded_params, params, missing_regex=".*")
+
 
 @dataclasses.dataclass(frozen=True)
 class PaliGemmaWeightLoader(WeightLoader):
@@ -117,6 +117,7 @@ def _align_param(expected, loaded, init_method):
     print(f"[WARN] Shape mismatch: expected {expected.shape}, got {loaded.shape}, truncated to {min_shape}")
     return new_param
 
+
 def _merge_params(loaded_params: at.Params, params: at.Params, *, missing_regex: str, init="random") -> at.Params:
 
     flat_ref = flax.traverse_util.flatten_dict(params, sep=None)
@@ -130,14 +131,14 @@ def _merge_params(loaded_params: at.Params, params: at.Params, *, missing_regex:
     pattern = re.compile(missing_regex)
 
     missing_keys = {k for k in flat_ref if pattern.fullmatch("/".join(map(str, k))) and k not in result}
-    
+
     for k in missing_keys:
         key_path = "/".join(map(str, k))
         expected_param = flat_ref[k]
 
         cloned = False
-        cloned_path_source = re.sub(r'(\w+)\_(\d+)', r'\g<1>_1', key_path, count=1)
-        k_source = tuple(cloned_path_source.split('/'))
+        cloned_path_source = re.sub(r"(\w+)\_(\d+)", r"\g<1>_1", key_path, count=1)
+        k_source = tuple(cloned_path_source.split("/"))
 
         if cloned_path_source != key_path:
             if k_source in flat_loaded:
@@ -148,13 +149,25 @@ def _merge_params(loaded_params: at.Params, params: at.Params, *, missing_regex:
                     print(f"[INFO] Cloned missing param {key_path} from {cloned_path_source} {expected_param.shape}")
                     cloned = True
                 else:
-                    print(f"[WARN] Clone attempt failed for {key_path}: source shape {loaded_param_source.shape} != target shape {expected_param.shape}")
+                    print(
+                        f"[WARN] Clone attempt failed for {key_path}: source shape {loaded_param_source.shape} != target shape {expected_param.shape}"
+                    )
 
         if not cloned:
             if init == "zeros":
                 result[k] = jnp.zeros(expected_param.shape, dtype=expected_param.dtype)
             else:
-                result[k] = jax.random.normal(jax.random.PRNGKey(0), expected_param.shape, dtype=expected_param.dtype) * 0.02
+                if jax.numpy.issubdtype(expected_param.dtype, jax.numpy.floating):
+                    result[k] = (
+                        jax.random.normal(jax.random.PRNGKey(0), expected_param.shape, dtype=expected_param.dtype)
+                        * 0.02
+                    )
+                elif jax.numpy.issubdtype(expected_param.dtype, jax.numpy.integer):
+                    result[k] = jax.random.randint(
+                        jax.random.PRNGKey(0), expected_param.shape, minval=0, maxval=100, dtype=expected_param.dtype
+                    )
+                else:
+                    result[k] = jnp.zeros(expected_param.shape, dtype=expected_param.dtype)
             print(f"[WARN] Missing param {key_path}, init as {init}, {expected_param.shape}")
 
     return flax.traverse_util.unflatten_dict(result)

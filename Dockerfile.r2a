@@ -1,0 +1,71 @@
+# Dockerfile for ACoT-VLA R2A (Genie3) Inference Server
+#
+# Build:   docker build -t acot-r2a-mymodal -f Dockerfile.r2a .
+# Tag:     docker tag acot-r2a-mymodal sim-icra-registry.cn-beijing.cr.aliyuncs.com/aol/acot-r2a-mymodal
+#
+# Dependencies are copied from /mnt/nas/.venv_lerobot
+
+FROM docker.1panel.live/nvidia/cuda:12.2.2-cudnn8-runtime-ubuntu22.04
+
+WORKDIR /app
+
+# Install Python and basic tools
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-venv \
+    python3-pip \
+    git \
+    wget \
+    curl \
+    libgl1 \
+    libglib2.0-0 \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create 'python' and 'python3' symlinks pointing to python3.11
+RUN ln -sf /usr/bin/python3.11 /usr/bin/python3 && \
+    ln -sf /usr/bin/python3.11 /usr/bin/python
+
+# Copy the entire pre-built virtual environment from /mnt/nas/.venv_lerobot
+COPY .venv_lerobot /opt/venv
+
+# Set up Python to use the copied virtual environment
+ENV PATH="/opt/venv/bin:$PATH"
+ENV UV_CACHE_DIR=/tmp/uv-cache
+
+# Install uv (fast pip/package manager) since it's not in the venv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh && \
+    cp /root/.local/bin/uv /usr/local/bin/ && \
+    cp /root/.local/bin/uvx /usr/local/bin/ && \
+    rm -rf /root/.local/
+
+# Verify uv is available
+RUN uv --version
+
+# Copy project source code (needed for local openpi installation)
+COPY . .
+
+# Install openpi from local source with its dependencies (already copied)
+# Using --no-deps because all dependencies are already installed
+RUN uv pip install --system --no-deps -e ".[dev]" && \
+    uv pip install --system --no-deps -e "./packages/openpi-client"
+
+# ── Configurable via build args or runtime ENV overrides ──
+ARG EXP_NAME=r2a_mymodal_v1
+ARG STEP=4000
+
+ENV EXP_NAME=r2a_mymodal_v1
+ENV STEP=4000
+ENV PORT=8999
+
+# ── Copy trained checkpoint weights into container ──
+COPY checkpoints/acot_r2a_mymodal_temporal_noise/${EXP_NAME}/${STEP} ./checkpoints/acot_r2a_mymodal_temporal_noise/${EXP_NAME}/
+
+# Copy norm_stats (not included in checkpoint directory)
+COPY assets/acot_r2a_mymodal_temporal_noise ./assets/acot_r2a_mymodal_temporal_noise/
+
+# Verify checkpoint exists inside container
+RUN ls -la ./checkpoints/acot_r2a_mymodal_temporal_noise/${EXP_NAME}/${STEP}/ && \
+    echo "Checkpoint ${STEP} loaded successfully."
+
+CMD ["bash", "scripts/serve_r2a_mymodal.sh"]

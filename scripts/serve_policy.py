@@ -9,6 +9,7 @@ from openpi.policies import policy as _policy
 from openpi.policies import policy_config as _policy_config
 from openpi.serving import websocket_policy_server
 from openpi.training import config as _config
+from openpi.policies.r2a_temporal_policy import R2ATemporalInputs, TemporalBufferedPolicy
 
 
 class EnvMode(enum.Enum):
@@ -104,11 +105,22 @@ def create_policy(args: Args) -> _policy.Policy:
     """Create a policy from the given arguments."""
     match args.policy:
         case Checkpoint():
-            return _policy_config.create_trained_policy(
+            policy = _policy_config.create_trained_policy(
                 _config.get_config(args.policy.config), args.policy.dir, default_prompt=args.default_prompt
             )
         case Default():
-            return create_default_policy(args.env, default_prompt=args.default_prompt)
+            policy = create_default_policy(args.env, default_prompt=args.default_prompt)
+
+    # Wrap with temporal frame buffer for Genie3 (single-frame → multi-frame).
+    # Genie3 sends one frame at a time; the model expects T=4 temporal frames.
+    config = _config.get_config(args.policy.config)
+    T = getattr(config.model, "num_history_frames", 4)
+    if T > 1:
+        camera_keys = getattr(R2ATemporalInputs, "EXPECTED_CAMERAS", None)
+        policy = TemporalBufferedPolicy(policy, T=T, camera_keys=camera_keys)
+        logging.info(f"Wrapped policy with TemporalFrameBuffer (T={T}, cameras={camera_keys})")
+
+    return policy
 
 
 def main(args: Args) -> None:

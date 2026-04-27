@@ -167,10 +167,16 @@ def train_step(
 
     new_state = dataclasses.replace(state, step=state.step + 1, params=new_params, opt_state=new_opt_state)
     if state.ema_decay is not None:
+        def _ema_update(old, new):
+            if hasattr(old, 'dtype') and jax.numpy.issubdtype(old.dtype, jax.numpy.floating):
+                return state.ema_decay * old + (1 - state.ema_decay) * new
+            return new
         new_state = dataclasses.replace(
             new_state,
             ema_params=jax.tree.map(
-                lambda old, new: state.ema_decay * old + (1 - state.ema_decay) * new, state.ema_params, new_params
+                _ema_update,
+                state.ema_params,
+                new_params,
             ),
         )
 
@@ -189,6 +195,7 @@ def train_step(
         "param_norm": optax.global_norm(kernel_params),
     }
     return new_state, info
+
 
 @at.typecheck
 def acot_train_step(
@@ -202,8 +209,11 @@ def acot_train_step(
 
     @at.typecheck
     def loss_fn(
-        model: _model.BaseModel, rng: at.KeyArrayLike, observation: _model.Observation, actions: _model.Actions,
-        coarse_actions: _model.CoarseActions
+        model: _model.BaseModel,
+        rng: at.KeyArrayLike,
+        observation: _model.Observation,
+        actions: _model.Actions,
+        coarse_actions: _model.CoarseActions,
     ):
         return model.compute_loss(rng, observation, actions, coarse_actions, train=True)
 
@@ -212,7 +222,9 @@ def acot_train_step(
 
     # Filter out frozen params.
     diff_state = nnx.DiffState(0, config.trainable_filter)
-    loss, grads = nnx.value_and_grad(loss_fn, argnums=diff_state)(model, train_rng, observation, actions, coarse_actions)
+    loss, grads = nnx.value_and_grad(loss_fn, argnums=diff_state)(
+        model, train_rng, observation, actions, coarse_actions
+    )
 
     params = state.params.filter(config.trainable_filter)
     updates, new_opt_state = state.tx.update(grads, state.opt_state, params)
@@ -224,10 +236,16 @@ def acot_train_step(
 
     new_state = dataclasses.replace(state, step=state.step + 1, params=new_params, opt_state=new_opt_state)
     if state.ema_decay is not None:
+        def _ema_update(old, new):
+            if hasattr(old, 'dtype') and jax.numpy.issubdtype(old.dtype, jax.numpy.floating):
+                return state.ema_decay * old + (1 - state.ema_decay) * new
+            return new
         new_state = dataclasses.replace(
             new_state,
             ema_params=jax.tree.map(
-                lambda old, new: state.ema_decay * old + (1 - state.ema_decay) * new, state.ema_params, new_params
+                _ema_update,
+                state.ema_params,
+                new_params,
             ),
         )
 
@@ -247,8 +265,12 @@ def acot_train_step(
     }
     return new_state, info
 
+
 def main(config: _config.TrainConfig):
     init_logging()
+    from openpi.shared.array_typing import disable_typechecking
+
+    disable_typechecking().__enter__()
     logging.info(f"Running on: {platform.node()}")
 
     if config.batch_size % jax.device_count() != 0:
@@ -283,11 +305,23 @@ def main(config: _config.TrainConfig):
     logging.info(f"Initialized data loader:\n{training_utils.array_tree_to_info(batch)}")
 
     # Log images from first batch to sanity check.
-    images_to_log = [
-        wandb.Image(np.concatenate([np.array(img[i]) for img in batch[0].images.values()], axis=1))
-        for i in range(min(5, len(next(iter(batch[0].images.values())))))
-    ]
-    wandb.log({"camera_views": images_to_log}, step=0)
+    def _to_loggable_image(img_array):
+        """Handle both (H,W,C) and temporal (T,H,W,C) images for wandb logging."""
+        arr = np.array(img_array)
+        if arr.ndim == 4:
+            arr = arr[-1]  # take most recent frame from temporal stack
+        return arr
+
+    try:
+        first_img = next(iter(batch[0].images.values()))
+        num_log = min(5, first_img.shape[0])
+        images_to_log = [
+            wandb.Image(np.concatenate([_to_loggable_image(img[i]) for img in batch[0].images.values()], axis=1))
+            for i in range(num_log)
+        ]
+        wandb.log({"camera_views": images_to_log}, step=0)
+    except Exception as e:
+        logging.warning(f"Failed to log camera views: {e}")
 
     train_state, train_state_sharding = init_train_state(config, init_rng, mesh, resume=resuming)
     jax.block_until_ready(train_state)
@@ -298,7 +332,10 @@ def main(config: _config.TrainConfig):
     if resuming:
         train_state = _checkpoints.restore_state(checkpoint_manager, train_state, data_loader)
 
-    if config.model.model_type == _model.ModelType.ACOT_VLA_PI05 or config.model.model_type == _model.ModelType.ACOT_VLA_PI0:
+    if (
+        config.model.model_type == _model.ModelType.ACOT_VLA_PI05
+        or config.model.model_type == _model.ModelType.ACOT_VLA_PI0
+    ):
         ptrain_step = jax.jit(
             functools.partial(acot_train_step, config),
             in_shardings=(replicated_sharding, train_state_sharding, data_sharding),
@@ -330,7 +367,7 @@ def main(config: _config.TrainConfig):
         with sharding.set_mesh(mesh):
             train_state, info = ptrain_step(train_rng, train_state, batch)
         infos.append(info)
-        if step % config.log_interval == 0:
+        if step == start_step or step % config.log_interval == 0:
             stacked_infos = common_utils.stack_forest(infos)
             reduced_info = jax.device_get(jax.tree.map(jnp.mean, stacked_infos))
             info_str = ", ".join(f"{k}={v:.4f}" for k, v in reduced_info.items())

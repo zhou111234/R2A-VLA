@@ -18,6 +18,8 @@ import openpi.models.model as _model
 import openpi.models.pi0 as pi0
 import openpi.models.pi0_fast as pi0_fast
 import openpi.models.acot_vla as acot_vla
+import openpi.models.acot_vla_mymodal as acot_vla_mymodal
+import openpi.policies.r2a_temporal_policy as r2a_temporal_policy
 import openpi.models.tokenizer as _tokenizer
 import openpi.policies.aloha_policy as aloha_policy
 import openpi.policies.droid_policy as droid_policy
@@ -97,7 +99,7 @@ class DataConfig:
 
     prompt_from_hl_instruction: bool = False
 
-    dataloader_sampler: str | None = ''
+    dataloader_sampler: str | None = ""
 
     # Only used for RLDS data loader (ie currently only used for DROID).
     rlds_data_dir: str | None = None
@@ -226,18 +228,18 @@ class DataConfigFactory(abc.ABC):
                 norm_stats = _normalize.load(_download.maybe_download(data_assets_dir))
                 logging.info(f"Loaded norm stats from {data_assets_dir}")
                 all_norm_stats.append(norm_stats)
-            
+
             agg = {}
-            
+
             for key in all_norm_stats[0].keys():
                 from openpi.shared.normalize import NormStats
-                agg[key] = NormStats(
-                    mean = np.mean([norm_stats[key].mean for norm_stats in all_norm_stats], axis=0), 
-                    std = np.mean([norm_stats[key].std for norm_stats in all_norm_stats], axis=0),
-                    q01 = np.mean([norm_stats[key].q01 for norm_stats in all_norm_stats], axis=0),
-                    q99 = np.mean([norm_stats[key].q99 for norm_stats in all_norm_stats], axis=0),
-                )
 
+                agg[key] = NormStats(
+                    mean=np.mean([norm_stats[key].mean for norm_stats in all_norm_stats], axis=0),
+                    std=np.mean([norm_stats[key].std for norm_stats in all_norm_stats], axis=0),
+                    q01=np.mean([norm_stats[key].q01 for norm_stats in all_norm_stats], axis=0),
+                    q99=np.mean([norm_stats[key].q99 for norm_stats in all_norm_stats], axis=0),
+                )
 
             norm_stats = agg
 
@@ -404,9 +406,9 @@ class LeRobotLiberoDataConfig(DataConfigFactory):
             model_transforms=model_transforms,
         )
 
+
 @dataclasses.dataclass(frozen=True)
 class LeRobotVLABenchDataConfig(DataConfigFactory):
-
     @override
     def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
         # Make inputs look like they come from the Libero environment
@@ -427,7 +429,9 @@ class LeRobotVLABenchDataConfig(DataConfigFactory):
         # Prepare data for policy training
         # Convert images to uint8 numpy arrays, add masks
         data_transforms = _transforms.Group(
-            inputs=[vlabench_policy.VLABenchInputs(action_dim=model_config.action_dim, model_type=model_config.model_type)],
+            inputs=[
+                vlabench_policy.VLABenchInputs(action_dim=model_config.action_dim, model_type=model_config.model_type)
+            ],
             outputs=[vlabench_policy.VLABenchOutputs()],
         )
         # Use delta actions (not for gripper)
@@ -446,6 +450,7 @@ class LeRobotVLABenchDataConfig(DataConfigFactory):
             data_transforms=data_transforms,
             model_transforms=model_transforms,
         )
+
 
 @dataclasses.dataclass(frozen=True)
 class LeRobotACOTVLABenchDataConfig(DataConfigFactory):
@@ -473,11 +478,16 @@ class LeRobotACOTVLABenchDataConfig(DataConfigFactory):
         # Prepare data for policy training
         # Convert images to uint8 numpy arrays, add masks
         data_transforms = _transforms.Group(
-            inputs=[vlabench_policy.VLABenchACOTInputs(
-                action_dim=model_config.action_dim,
-                model_type=model_config.model_type,
-                acot_action_generation=((model_config.coarse_action_horizon, model_config.action_horizon), self.joint_action_shifts))
-                ],
+            inputs=[
+                vlabench_policy.VLABenchACOTInputs(
+                    action_dim=model_config.action_dim,
+                    model_type=model_config.model_type,
+                    acot_action_generation=(
+                        (model_config.coarse_action_horizon, model_config.action_horizon),
+                        self.joint_action_shifts,
+                    ),
+                )
+            ],
             outputs=[vlabench_policy.VLABenchACOTOutputs()],
         )
         # Use delta actions (not for gripper)
@@ -490,13 +500,13 @@ class LeRobotACOTVLABenchDataConfig(DataConfigFactory):
         # Model transforms include things like tokenizing the prompt and action targets
         model_transforms = ModelTransformFactory()(model_config)
 
-        ret_config =  dataclasses.replace(
+        ret_config = dataclasses.replace(
             self.create_base_config(assets_dirs, model_config),
             repack_transforms=repack_transform,
             data_transforms=data_transforms,
             model_transforms=model_transforms,
         )
-        object.__setattr__(ret_config, 'joint_action_shifts', self.joint_action_shifts)
+        object.__setattr__(ret_config, "joint_action_shifts", self.joint_action_shifts)
         return ret_config
 
 
@@ -506,6 +516,7 @@ class LerobotACOTGo1DataConfig(DataConfigFactory):
     Configuration for the Go1 robot dataset.
     This config handles the data transforms for the Go1 robot's multi-camera setup and state/action space.
     """
+
     prompt_from_hl_instruction: bool = False
 
     extra_delta_transform: Sequence[bool] = (False, False)
@@ -526,7 +537,7 @@ class LerobotACOTGo1DataConfig(DataConfigFactory):
                             "hand_right": "observation.images.hand_right",
                         },
                         "state": "observation.state",
-                        "actions": "action"
+                        "actions": "action",
                     }
                 )
             ]
@@ -536,25 +547,24 @@ class LerobotACOTGo1DataConfig(DataConfigFactory):
     # Action keys that will be used to read the action sequence from the dataset
     action_sequence_keys: Sequence[str] = ("action",)
 
-    state_mask: Sequence[int] = dataclasses.field(
-        default_factory=lambda: list(_transforms.make_bool_mask(-14, 18))
-    )
-    action_mask: Sequence[int] = dataclasses.field(
-        default_factory=lambda: list(_transforms.make_bool_mask(-16, 16))
-    )
-    delta_action_mask: Sequence[int] = dataclasses.field(
-        default_factory=lambda: _transforms.make_bool_mask(14, -18)
-    )
+    state_mask: Sequence[int] = dataclasses.field(default_factory=lambda: list(_transforms.make_bool_mask(-14, 18)))
+    action_mask: Sequence[int] = dataclasses.field(default_factory=lambda: list(_transforms.make_bool_mask(-16, 16)))
+    delta_action_mask: Sequence[int] = dataclasses.field(default_factory=lambda: _transforms.make_bool_mask(14, -18))
 
     @override
     def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
         # Create data transforms for inputs and outputs
         data_transforms = _transforms.Group(
-            inputs=[go1_policy.Go1ACOTInputs(
-                action_dim=model_config.action_dim,
-                state_mask = self.state_mask,
-                action_mask = self.action_mask,
-                acot_action_generation=((model_config.coarse_action_horizon, model_config.action_horizon), self.joint_action_shifts))
+            inputs=[
+                go1_policy.Go1ACOTInputs(
+                    action_dim=model_config.action_dim,
+                    state_mask=self.state_mask,
+                    action_mask=self.action_mask,
+                    acot_action_generation=(
+                        (model_config.coarse_action_horizon, model_config.action_horizon),
+                        self.joint_action_shifts,
+                    ),
+                )
             ],
             outputs=[go1_policy.Go1ACOTOutputs()],
         )
@@ -568,14 +578,14 @@ class LerobotACOTGo1DataConfig(DataConfigFactory):
         # Create model transforms
         model_transforms = ModelTransformFactory(default_prompt=self.default_prompt)(model_config)
 
-        ret_config =  dataclasses.replace(
+        ret_config = dataclasses.replace(
             self.create_base_config(assets_dirs, model_config),
             repack_transforms=self.repack_transforms,
             data_transforms=data_transforms,
             model_transforms=model_transforms,
             action_sequence_keys=self.action_sequence_keys,
         )
-        object.__setattr__(ret_config, 'joint_action_shifts', self.joint_action_shifts)
+        object.__setattr__(ret_config, "joint_action_shifts", self.joint_action_shifts)
         return ret_config
 
 
@@ -585,6 +595,7 @@ class LerobotACOTGo2DataConfig(DataConfigFactory):
     Configuration for the Go2 robot dataset.
     This config handles the data transforms for the Go2 robot's multi-camera setup and state/action space.
     """
+
     prompt_from_hl_instruction: bool = False
 
     extra_delta_transform: Sequence[bool] = (False, False)
@@ -605,7 +616,7 @@ class LerobotACOTGo2DataConfig(DataConfigFactory):
                             "hand_right": "observation.images.hand_right",
                         },
                         "state": "observation.state",
-                        "actions": "action"
+                        "actions": "action",
                     }
                 )
             ]
@@ -619,26 +630,25 @@ class LerobotACOTGo2DataConfig(DataConfigFactory):
         # mask two gripper state and useless four waist joint states.
         default_factory=lambda: _transforms.make_bool_mask(-14, 2, 4, -1, 11)
     )
-    action_mask: Sequence[int] = dataclasses.field(
-        default_factory=lambda: _transforms.make_bool_mask(-16, 4, -1, 11)
-    )
-    delta_action_mask: Sequence[int] = dataclasses.field(
-        default_factory=lambda: _transforms.make_bool_mask(14, -18)
-    )
-    prompt_map_inject_to_training: Dict[str, Sequence[str]] = dataclasses.field(
-        default_factory=lambda: {}
-    )
+    action_mask: Sequence[int] = dataclasses.field(default_factory=lambda: _transforms.make_bool_mask(-16, 4, -1, 11))
+    delta_action_mask: Sequence[int] = dataclasses.field(default_factory=lambda: _transforms.make_bool_mask(14, -18))
+    prompt_map_inject_to_training: Dict[str, Sequence[str]] = dataclasses.field(default_factory=lambda: {})
 
     @override
     def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
         # Create data transforms for inputs and outputs
         data_transforms = _transforms.Group(
-            inputs=[go2_policy.Go2ACOTInputs(
-                action_dim=model_config.action_dim,
-                state_mask = self.state_mask,
-                action_mask = self.action_mask,
-                prompt_map_inject_to_training = self.prompt_map_inject_to_training,
-                acot_action_generation=((model_config.coarse_action_horizon, model_config.action_horizon), self.joint_action_shifts))
+            inputs=[
+                go2_policy.Go2ACOTInputs(
+                    action_dim=model_config.action_dim,
+                    state_mask=self.state_mask,
+                    action_mask=self.action_mask,
+                    prompt_map_inject_to_training=self.prompt_map_inject_to_training,
+                    acot_action_generation=(
+                        (model_config.coarse_action_horizon, model_config.action_horizon),
+                        self.joint_action_shifts,
+                    ),
+                )
             ],
             outputs=[go2_policy.Go2ACOTOutputs()],
         )
@@ -652,21 +662,97 @@ class LerobotACOTGo2DataConfig(DataConfigFactory):
         # Create model transforms
         model_transforms = ModelTransformFactory(default_prompt=self.default_prompt)(model_config)
 
-        ret_config =  dataclasses.replace(
+        ret_config = dataclasses.replace(
             self.create_base_config(assets_dirs, model_config),
             repack_transforms=self.repack_transforms,
             data_transforms=data_transforms,
             model_transforms=model_transforms,
             action_sequence_keys=self.action_sequence_keys,
         )
-        object.__setattr__(ret_config, 'joint_action_shifts', self.joint_action_shifts)
+        object.__setattr__(ret_config, "joint_action_shifts", self.joint_action_shifts)
         return ret_config
+
+
+@dataclasses.dataclass(frozen=True)
+class LerobotACOTTemporalGo2DataConfig(DataConfigFactory):
+    """Data config for R2A competition with temporal multi-frame support."""
+
+    prompt_from_hl_instruction: bool = False
+    extra_delta_transform: Sequence[bool] = (False, False)
+    joint_action_shifts: Sequence[int] = (2, 1)
+    default_prompt: str | None = None
+    num_history_frames: int = 4
+
+    repack_transforms: tyro.conf.Suppress[_transforms.Group] = dataclasses.field(
+        default=_transforms.Group(
+            inputs=[
+                _transforms.RepackTransform(
+                    {
+                        "images": {
+                            "top_head": "observation.images.top_head",
+                            "hand_left": "observation.images.hand_left",
+                            "hand_right": "observation.images.hand_right",
+                        },
+                        "state": "observation.state",
+                        "actions": "action",
+                        "prompt": "prompt",
+                        "task": "task",
+                        "episode_index": "episode_index",
+                    }
+                )
+            ]
+        )
+    )
+
+    action_sequence_keys: Sequence[str] = ("action",)
+
+    state_mask: Sequence[int] = dataclasses.field(default_factory=lambda: _transforms.make_bool_mask(-14, 2, 4, -1, 11))
+    action_mask: Sequence[int] = dataclasses.field(default_factory=lambda: _transforms.make_bool_mask(-16, 4, -1, 11))
+    delta_action_mask: Sequence[int] = dataclasses.field(default_factory=lambda: _transforms.make_bool_mask(14, -18))
+    prompt_map_inject_to_training: Dict[str, Sequence[str]] = dataclasses.field(default_factory=lambda: {})
+
+    @override
+    def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
+        data_transforms = _transforms.Group(
+            inputs=[
+                r2a_temporal_policy.R2ATemporalInputs(
+                    action_dim=model_config.action_dim,
+                    state_mask=self.state_mask,
+                    action_mask=self.action_mask,
+                    prompt_map_inject_to_training=self.prompt_map_inject_to_training,
+                    acot_action_generation=(
+                        (model_config.coarse_action_horizon, model_config.action_horizon),
+                        self.joint_action_shifts,
+                    ),
+                )
+            ],
+            outputs=[r2a_temporal_policy.R2ATemporalOutputs()],
+        )
+
+        data_transforms = data_transforms.push(
+            inputs=[_transforms.ACOTDeltaActions(self.delta_action_mask, self.extra_delta_transform)],
+            outputs=[_transforms.ACOTAbsoluteActions(self.delta_action_mask, self.extra_delta_transform)],
+        )
+
+        model_transforms = ModelTransformFactory(default_prompt=self.default_prompt)(model_config)
+
+        ret_config = dataclasses.replace(
+            self.create_base_config(assets_dirs, model_config),
+            repack_transforms=self.repack_transforms,
+            data_transforms=data_transforms,
+            model_transforms=model_transforms,
+            action_sequence_keys=self.action_sequence_keys,
+        )
+        object.__setattr__(ret_config, "joint_action_shifts", self.joint_action_shifts)
+        object.__setattr__(ret_config, "num_history_frames", self.num_history_frames)
+        return ret_config
+
 
 @dataclasses.dataclass(frozen=True)
 class LeRobotACOTLiberoDataConfig(DataConfigFactory):
-
     extra_delta_transform: Sequence[bool] = (False, False)
     joint_action_shifts: Sequence[int] = (2, 1)
+
     @override
     def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
 
@@ -685,10 +771,15 @@ class LeRobotACOTLiberoDataConfig(DataConfigFactory):
         )
 
         data_transforms = _transforms.Group(
-            inputs=[libero_policy.LiberoACOTInputs(
-                model_type=model_config.model_type,
-                acot_action_generation=((model_config.coarse_action_horizon, model_config.action_horizon), self.joint_action_shifts))
-                ],
+            inputs=[
+                libero_policy.LiberoACOTInputs(
+                    model_type=model_config.model_type,
+                    acot_action_generation=(
+                        (model_config.coarse_action_horizon, model_config.action_horizon),
+                        self.joint_action_shifts,
+                    ),
+                )
+            ],
             outputs=[libero_policy.LiberoACOTOutputs()],
         )
 
@@ -705,16 +796,16 @@ class LeRobotACOTLiberoDataConfig(DataConfigFactory):
             data_transforms=data_transforms,
             model_transforms=model_transforms,
         )
-        object.__setattr__(ret_config, 'joint_action_shifts', self.joint_action_shifts)
+        object.__setattr__(ret_config, "joint_action_shifts", self.joint_action_shifts)
         return ret_config
 
 
 @dataclasses.dataclass(frozen=True)
 class LeRobotACOTLiberoPlusDataConfig(DataConfigFactory):
-
     extra_delta_transform: Sequence[bool] = (False, False)
     joint_action_shifts: Sequence[int] = (2, 1)
     action_sequence_keys: Sequence[str] = ("action",)
+
     @override
     def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
 
@@ -733,10 +824,15 @@ class LeRobotACOTLiberoPlusDataConfig(DataConfigFactory):
         )
 
         data_transforms = _transforms.Group(
-            inputs=[libero_policy.LiberoACOTInputs(
-                model_type=model_config.model_type,
-                acot_action_generation=((model_config.coarse_action_horizon, model_config.action_horizon), self.joint_action_shifts))
-                ],
+            inputs=[
+                libero_policy.LiberoACOTInputs(
+                    model_type=model_config.model_type,
+                    acot_action_generation=(
+                        (model_config.coarse_action_horizon, model_config.action_horizon),
+                        self.joint_action_shifts,
+                    ),
+                )
+            ],
             outputs=[libero_policy.LiberoACOTOutputs()],
         )
 
@@ -754,7 +850,7 @@ class LeRobotACOTLiberoPlusDataConfig(DataConfigFactory):
             model_transforms=model_transforms,
             action_sequence_keys=self.action_sequence_keys,
         )
-        object.__setattr__(ret_config, 'joint_action_shifts', self.joint_action_shifts)
+        object.__setattr__(ret_config, "joint_action_shifts", self.joint_action_shifts)
         return ret_config
 
 
@@ -848,6 +944,7 @@ class LeRobotDROIDDataConfig(DataConfigFactory):
             model_transforms=model_transforms,
         )
 
+
 @dataclasses.dataclass(frozen=True)
 class LerobotAgilexDataConfig(DataConfigFactory):
     """
@@ -924,6 +1021,7 @@ class LerobotAgilexDataConfig(DataConfigFactory):
             action_sequence_keys=self.action_sequence_keys,
         )
 
+
 @dataclasses.dataclass(frozen=True)
 class LerobotACOTAgilexDataConfig(DataConfigFactory):
     """
@@ -972,7 +1070,10 @@ class LerobotACOTAgilexDataConfig(DataConfigFactory):
                     action_dim=model_config.action_dim,
                     model_type=model_config.model_type,
                     convert_to_eef_position=self.convert_to_eef_position,
-                    acot_action_generation=((model_config.coarse_action_horizon, model_config.action_horizon), self.joint_action_shifts)
+                    acot_action_generation=(
+                        (model_config.coarse_action_horizon, model_config.action_horizon),
+                        self.joint_action_shifts,
+                    ),
                 )
             ],
             outputs=[agilex_policy.AgilexACOTOutputs()],
@@ -993,7 +1094,7 @@ class LerobotACOTAgilexDataConfig(DataConfigFactory):
             model_transforms=model_transforms,
             action_sequence_keys=self.action_sequence_keys,
         )
-        object.__setattr__(ret_config, 'joint_action_shifts', self.joint_action_shifts)
+        object.__setattr__(ret_config, "joint_action_shifts", self.joint_action_shifts)
         return ret_config
 
 
@@ -1070,6 +1171,7 @@ class LerobotARXDataConfig(DataConfigFactory):
             action_sequence_keys=self.action_sequence_keys,
         )
 
+
 @dataclasses.dataclass(frozen=True)
 class LerobotACOTARXDataConfig(DataConfigFactory):
     """
@@ -1119,7 +1221,10 @@ class LerobotACOTARXDataConfig(DataConfigFactory):
                     model_type=model_config.model_type,
                     state_mask=self.state_mask,
                     action_mask=self.action_mask,
-                    acot_action_generation=((model_config.coarse_action_horizon, model_config.action_horizon), self.joint_action_shifts)
+                    acot_action_generation=(
+                        (model_config.coarse_action_horizon, model_config.action_horizon),
+                        self.joint_action_shifts,
+                    ),
                 )
             ],
             outputs=[arx_policy.ARXACOTOutputs()],
@@ -1142,7 +1247,7 @@ class LerobotACOTARXDataConfig(DataConfigFactory):
             model_transforms=model_transforms,
             action_sequence_keys=self.action_sequence_keys,
         )
-        object.__setattr__(ret_config, 'joint_action_shifts', self.joint_action_shifts)
+        object.__setattr__(ret_config, "joint_action_shifts", self.joint_action_shifts)
         return ret_config
 
 
@@ -1583,12 +1688,22 @@ _CONFIGS = [
     # action cot related configs
     TrainConfig(
         name="acot_libero_action_cot_explicit_implicit_co_fusion",
-        model=acot_vla.ACOTConfig(coarse_action_horizon=15, action_horizon=10, pi05=True, discrete_state_input=False, coarse_action_expert_variant = "gemma_300m", action_expert_variant = "gemma_300m", adopt_explicit_action_reasoner=True, adopt_implicit_action_reasoner=True, downsample_based_implicit_extractor=True),
+        model=acot_vla.ACOTConfig(
+            coarse_action_horizon=15,
+            action_horizon=10,
+            pi05=True,
+            discrete_state_input=False,
+            coarse_action_expert_variant="gemma_300m",
+            action_expert_variant="gemma_300m",
+            adopt_explicit_action_reasoner=True,
+            adopt_implicit_action_reasoner=True,
+            downsample_based_implicit_extractor=True,
+        ),
         data=LeRobotACOTLiberoDataConfig(
             repo_id="/mnt/public/zhonglinqing/data/datasets/libero_dataset/",
             base_config=DataConfig(prompt_from_task=True),
             extra_delta_transform=(False, False),
-            joint_action_shifts=(2, 1)
+            joint_action_shifts=(2, 1),
         ),
         lr_schedule=_optimizer.CosineDecaySchedule(
             warmup_steps=10_000,
@@ -1598,19 +1713,30 @@ _CONFIGS = [
         ),
         optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
         ema_decay=0.999,
-        weight_loader=weight_loaders.ACOTCheckpointWeightLoader(
-            "/mnt/public/zhonglinqing/pkgs/pi05_model/params"
-        ),
+        weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=51_000,
         save_interval=10000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1000,
         num_workers=48 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
         batch_size=128 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
-        freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(freeze_vision = False, freeze_llm = True, freeze_dual_ae=[False, False]),
+        freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
+            freeze_vision=False, freeze_llm=True, freeze_dual_ae=[False, False]
+        ),
     ),
     # VLABench configs
     TrainConfig(
         name="acot_vlabench_action_cot_explicit_implicit_co_fusion",
-        model=acot_vla.ACOTConfig(action_dim = 7, coarse_action_horizon=15, action_horizon=10, pi05=True, discrete_state_input=True, coarse_action_expert_variant = "gemma_300m", action_expert_variant = "gemma_300m", adopt_explicit_action_reasoner=True, adopt_implicit_action_reasoner=True, downsample_based_implicit_extractor=True),
+        model=acot_vla.ACOTConfig(
+            action_dim=7,
+            coarse_action_horizon=15,
+            action_horizon=10,
+            pi05=True,
+            discrete_state_input=True,
+            coarse_action_expert_variant="gemma_300m",
+            action_expert_variant="gemma_300m",
+            adopt_explicit_action_reasoner=True,
+            adopt_implicit_action_reasoner=True,
+            downsample_based_implicit_extractor=True,
+        ),
         data=LeRobotACOTVLABenchDataConfig(
             repo_id=[
                 "/mnt/public/zhonglinqing/data/datasets/vlabench-dataset/primitive_lerobot/add_condiment",
@@ -1622,11 +1748,11 @@ _CONFIGS = [
                 "/mnt/public/zhonglinqing/data/datasets/vlabench-dataset/primitive_lerobot/select_mahjong",
                 "/mnt/public/zhonglinqing/data/datasets/vlabench-dataset/primitive_lerobot/select_painting",
                 "/mnt/public/zhonglinqing/data/datasets/vlabench-dataset/primitive_lerobot/select_poker",
-                "/mnt/public/zhonglinqing/data/datasets/vlabench-dataset/primitive_lerobot/select_toy"
+                "/mnt/public/zhonglinqing/data/datasets/vlabench-dataset/primitive_lerobot/select_toy",
             ],
             base_config=DataConfig(prompt_from_task=True),
             extra_delta_transform=(False, False),
-            joint_action_shifts=(2, 1)
+            joint_action_shifts=(2, 1),
         ),
         lr_schedule=_optimizer.CosineDecaySchedule(
             warmup_steps=10_000,
@@ -1636,24 +1762,34 @@ _CONFIGS = [
         ),
         optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
         ema_decay=0.999,
-        weight_loader=weight_loaders.ACOTCheckpointWeightLoader(
-            "/mnt/public/zhonglinqing/pkgs/pi05_model/params"
-        ),
+        weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=61_000,
         save_interval=10000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1000,
         num_workers=48 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
         batch_size=128 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
-        freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(freeze_vision = False, freeze_llm = True, freeze_llm_embedder=False, freeze_dual_ae=[False, False]),
+        freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
+            freeze_vision=False, freeze_llm=True, freeze_llm_embedder=False, freeze_dual_ae=[False, False]
+        ),
     ),
     # libero plus
     TrainConfig(
         name="acot_libero_plus_action_cot_explicit_implicit_co_fusion",
-        model=acot_vla.ACOTConfig(coarse_action_horizon=15, action_horizon=10, pi05=True, discrete_state_input=False, coarse_action_expert_variant = "gemma_300m", action_expert_variant = "gemma_300m", adopt_explicit_action_reasoner=True, adopt_implicit_action_reasoner=True, downsample_based_implicit_extractor=True),
+        model=acot_vla.ACOTConfig(
+            coarse_action_horizon=15,
+            action_horizon=10,
+            pi05=True,
+            discrete_state_input=False,
+            coarse_action_expert_variant="gemma_300m",
+            action_expert_variant="gemma_300m",
+            adopt_explicit_action_reasoner=True,
+            adopt_implicit_action_reasoner=True,
+            downsample_based_implicit_extractor=True,
+        ),
         data=LeRobotACOTLiberoPlusDataConfig(
             repo_id="/mnt/public/zhonglinqing/data/datasets/libero_plus_dataset",
             base_config=DataConfig(prompt_from_task=True),
             extra_delta_transform=(False, False),
-            joint_action_shifts=(2, 1)
+            joint_action_shifts=(2, 1),
         ),
         lr_schedule=_optimizer.CosineDecaySchedule(
             warmup_steps=10_000,
@@ -1663,122 +1799,35 @@ _CONFIGS = [
         ),
         optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
         ema_decay=0.999,
-        weight_loader=weight_loaders.ACOTCheckpointWeightLoader(
-            "/mnt/public/zhonglinqing/pkgs/pi05_model/params"
-        ),
+        weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=101_000,
         save_interval=20000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1000,
         num_workers=48 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
         batch_size=128 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
-        freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(freeze_vision = False, freeze_llm = True, freeze_dual_ae=[False, False]),
+        freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
+            freeze_vision=False, freeze_llm=True, freeze_dual_ae=[False, False]
+        ),
     ),
     # go1 configs
     TrainConfig(
         name="acot_go1_openset_pick_action_cot_explicit_implicit_co_fusion",
-        model=acot_vla.ACOTConfig(coarse_action_horizon=30, action_horizon=30, pi05=True, discrete_state_input=False, action_expert_variant = "gemma_300m", adopt_explicit_action_reasoner=True, adopt_implicit_action_reasoner=True, downsample_based_implicit_extractor=True),
+        model=acot_vla.ACOTConfig(
+            coarse_action_horizon=30,
+            action_horizon=30,
+            pi05=True,
+            discrete_state_input=False,
+            action_expert_variant="gemma_300m",
+            adopt_explicit_action_reasoner=True,
+            adopt_implicit_action_reasoner=True,
+            downsample_based_implicit_extractor=True,
+        ),
         data=LerobotACOTGo1DataConfig(
             repo_id="/mnt/public/zhonglinqing/data/datasets/lerobot_dataset/random_pick_3124_3136",
             default_prompt="pick up the item on the table use your arm.",
             base_config=DataConfig(dataloader_sampler="subtask", prompt_from_hl_instruction=True),
             extra_delta_transform=(False, False),
             joint_action_shifts=(2, 1),
-            repack_transforms =_transforms.Group(
-                inputs=[
-                    _transforms.RepackTransform(
-                        {
-                            "images": {
-                                "top_head": "observation.images.top_head",
-                                "hand_left": "observation.images.hand_left",
-                                "hand_right": "observation.images.hand_right",
-                            },
-                            "state": "observation.state",
-                            "actions": "action",
-                            "prompt": "prompt"
-                        }
-                    )
-                ]
-            )
-        ),
-        lr_schedule=_optimizer.CosineDecaySchedule(
-            warmup_steps=10_000,
-            peak_lr=5e-5,
-            decay_steps=1_000_000,
-            decay_lr=5e-5,
-        ),
-        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
-        ema_decay=0.999,
-        weight_loader=weight_loaders.ACOTCheckpointWeightLoader(
-            "/mnt/public/zhonglinqing/pkgs/pi05_model/params"
-        ),
-        num_train_steps=51_000,
-        save_interval=10000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1000,
-        num_workers=48 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
-        batch_size=128 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
-        freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(freeze_vision = False, freeze_llm = True, freeze_dual_ae=[False, False]),
-    ),
-    TrainConfig(
-        name="acot_go1_wipe_stain_action_cot_explicit_implicit_co_fusion",
-        model=acot_vla.ACOTConfig(coarse_action_horizon=30, action_horizon=30, pi05=True, discrete_state_input=True, action_expert_variant = "gemma_300m", adopt_explicit_action_reasoner=True, adopt_implicit_action_reasoner=True, downsample_based_implicit_extractor=True),
-        data=LerobotACOTGo1DataConfig(
-            repo_id="/mnt/public/zhonglinqing/data/datasets/lerobot_dataset/Wipe_the_table_stains",
-            default_prompt="Wipe the table stains",
-            extra_delta_transform=(False, False),
-            joint_action_shifts=(2, 1)
-        ),
-        lr_schedule=_optimizer.CosineDecaySchedule(
-            warmup_steps=10_000,
-            peak_lr=5e-5,
-            decay_steps=1_000_000,
-            decay_lr=5e-5,
-        ),
-        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
-        ema_decay=0.999,
-        weight_loader=weight_loaders.ACOTCheckpointWeightLoader(
-            "/mnt/public/zhonglinqing/pkgs/pi05_model/params"
-        ),
-        num_train_steps=51_000,
-        save_interval=10000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1000,
-        num_workers=48 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
-        batch_size=128 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
-        freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(freeze_vision = False, freeze_llm = True, freeze_llm_embedder=False, freeze_dual_ae=[False, False]),
-    ),
-    TrainConfig(
-        name="acot_go1_pourwater_action_cot_explicit_implicit_co_fusion",
-        model=acot_vla.ACOTConfig(coarse_action_horizon=30, action_horizon=30, pi05=True, discrete_state_input=True, action_expert_variant = "gemma_300m", adopt_explicit_action_reasoner=True, adopt_implicit_action_reasoner=True, downsample_based_implicit_extractor=True),
-        data=LerobotACOTGo1DataConfig(
-            repo_id="/mnt/public/zhonglinqing/data/datasets/lerobot_dataset/pourwater_merged",
-            default_prompt="Pour water",
-            extra_delta_transform=(False, False),
-            joint_action_shifts=(2, 1)
-        ),
-        lr_schedule=_optimizer.CosineDecaySchedule(
-            warmup_steps=10_000,
-            peak_lr=5e-5,
-            decay_steps=1_000_000,
-            decay_lr=5e-5,
-        ),
-        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
-        ema_decay=0.999,
-        weight_loader=weight_loaders.ACOTCheckpointWeightLoader(
-            "/mnt/public/zhonglinqing/pkgs/pi05_model/params"
-        ),
-        num_train_steps=240_000,
-        save_interval=30000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1000,
-        num_workers=48 if not os.getenv("DEBUG_MODE", default=False) == "true" else 48,
-        batch_size=128 if not os.getenv("DEBUG_MODE", default=False) == "true" else 128,
-        freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(freeze_vision = False, freeze_llm = True, freeze_llm_embedder = False, freeze_dual_ae=[False, False]),
-    ),
-    # agilex configs
-    TrainConfig(
-        name="acot_agilex_openset_pick_action_cot_explicit_implicit_co_fusion",
-        model=acot_vla.ACOTConfig(coarse_action_horizon=30, action_horizon=30, pi05=True, discrete_state_input=False, action_expert_variant = "gemma_300m", adopt_explicit_action_reasoner=True, adopt_implicit_action_reasoner=True, downsample_based_implicit_extractor=True),
-        data=LerobotACOTAgilexDataConfig(
-            repo_id="/mnt/public/zhonglinqing/data/datasets/lerobot_dataset/agilex_random_pick/merge",
-            default_prompt="pick up the item on the table use your arm.",
-            base_config=DataConfig(dataloader_sampler="subtask", prompt_from_hl_instruction=True),
-            extra_delta_transform=(False, False),
-            joint_action_shifts=(2, 1),
-            repack_transforms =_transforms.Group(
+            repack_transforms=_transforms.Group(
                 inputs=[
                     _transforms.RepackTransform(
                         {
@@ -1793,7 +1842,7 @@ _CONFIGS = [
                         }
                     )
                 ]
-            )
+            ),
         ),
         lr_schedule=_optimizer.CosineDecaySchedule(
             warmup_steps=10_000,
@@ -1803,69 +1852,195 @@ _CONFIGS = [
         ),
         optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
         ema_decay=0.999,
-        weight_loader=weight_loaders.ACOTCheckpointWeightLoader(
-            "/mnt/public/zhonglinqing/pkgs/pi05_model/params"
+        weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
+        num_train_steps=51_000,
+        save_interval=10000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1000,
+        num_workers=48 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
+        batch_size=128 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
+        freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
+            freeze_vision=False, freeze_llm=True, freeze_dual_ae=[False, False]
         ),
+    ),
+    TrainConfig(
+        name="acot_go1_wipe_stain_action_cot_explicit_implicit_co_fusion",
+        model=acot_vla.ACOTConfig(
+            coarse_action_horizon=30,
+            action_horizon=30,
+            pi05=True,
+            discrete_state_input=True,
+            action_expert_variant="gemma_300m",
+            adopt_explicit_action_reasoner=True,
+            adopt_implicit_action_reasoner=True,
+            downsample_based_implicit_extractor=True,
+        ),
+        data=LerobotACOTGo1DataConfig(
+            repo_id="/mnt/public/zhonglinqing/data/datasets/lerobot_dataset/Wipe_the_table_stains",
+            default_prompt="Wipe the table stains",
+            extra_delta_transform=(False, False),
+            joint_action_shifts=(2, 1),
+        ),
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,
+            peak_lr=5e-5,
+            decay_steps=1_000_000,
+            decay_lr=5e-5,
+        ),
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+        ema_decay=0.999,
+        weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
+        num_train_steps=51_000,
+        save_interval=10000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1000,
+        num_workers=48 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
+        batch_size=128 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
+        freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
+            freeze_vision=False, freeze_llm=True, freeze_llm_embedder=False, freeze_dual_ae=[False, False]
+        ),
+    ),
+    TrainConfig(
+        name="acot_go1_pourwater_action_cot_explicit_implicit_co_fusion",
+        model=acot_vla.ACOTConfig(
+            coarse_action_horizon=30,
+            action_horizon=30,
+            pi05=True,
+            discrete_state_input=True,
+            action_expert_variant="gemma_300m",
+            adopt_explicit_action_reasoner=True,
+            adopt_implicit_action_reasoner=True,
+            downsample_based_implicit_extractor=True,
+        ),
+        data=LerobotACOTGo1DataConfig(
+            repo_id="/mnt/public/zhonglinqing/data/datasets/lerobot_dataset/pourwater_merged",
+            default_prompt="Pour water",
+            extra_delta_transform=(False, False),
+            joint_action_shifts=(2, 1),
+        ),
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,
+            peak_lr=5e-5,
+            decay_steps=1_000_000,
+            decay_lr=5e-5,
+        ),
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+        ema_decay=0.999,
+        weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
+        num_train_steps=240_000,
+        save_interval=30000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1000,
+        num_workers=48 if not os.getenv("DEBUG_MODE", default=False) == "true" else 48,
+        batch_size=128 if not os.getenv("DEBUG_MODE", default=False) == "true" else 128,
+        freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
+            freeze_vision=False, freeze_llm=True, freeze_llm_embedder=False, freeze_dual_ae=[False, False]
+        ),
+    ),
+    # agilex configs
+    TrainConfig(
+        name="acot_agilex_openset_pick_action_cot_explicit_implicit_co_fusion",
+        model=acot_vla.ACOTConfig(
+            coarse_action_horizon=30,
+            action_horizon=30,
+            pi05=True,
+            discrete_state_input=False,
+            action_expert_variant="gemma_300m",
+            adopt_explicit_action_reasoner=True,
+            adopt_implicit_action_reasoner=True,
+            downsample_based_implicit_extractor=True,
+        ),
+        data=LerobotACOTAgilexDataConfig(
+            repo_id="/mnt/public/zhonglinqing/data/datasets/lerobot_dataset/agilex_random_pick/merge",
+            default_prompt="pick up the item on the table use your arm.",
+            base_config=DataConfig(dataloader_sampler="subtask", prompt_from_hl_instruction=True),
+            extra_delta_transform=(False, False),
+            joint_action_shifts=(2, 1),
+            repack_transforms=_transforms.Group(
+                inputs=[
+                    _transforms.RepackTransform(
+                        {
+                            "images": {
+                                "top_head": "observation.images.top_head",
+                                "hand_left": "observation.images.hand_left",
+                                "hand_right": "observation.images.hand_right",
+                            },
+                            "state": "observation.state",
+                            "actions": "action",
+                            "prompt": "prompt",
+                        }
+                    )
+                ]
+            ),
+        ),
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,
+            peak_lr=5e-5,
+            decay_steps=1_000_000,
+            decay_lr=5e-5,
+        ),
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+        ema_decay=0.999,
+        weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=51_000,
         save_interval=10000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 200,
         num_workers=48 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
         batch_size=128 if not os.getenv("DEBUG_MODE", default=False) == "true" else 16,
-        freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(freeze_vision = False, freeze_llm = True, freeze_dual_ae=[False, False]),
+        freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
+            freeze_vision=False, freeze_llm=True, freeze_dual_ae=[False, False]
+        ),
     ),
     # genie sim 3.0 baseline configs
     TrainConfig(
         name="acot_icra_simulation_challenge_reasoning_to_action",
         # For the ICRA sim challenge, we set both coarse and fine action horizons to 30 since the tasks are relatively long-horizon.
         # We also use both explicit and implicit action reasoners, and use the downsample-based implicit extractor.
-        # You can modify these design choices based on the specific tasks and dataset. 
-        model=acot_vla.ACOTConfig(coarse_action_horizon=30, action_horizon=30, paligemma_variant="gemma_2b_lora", adopt_explicit_action_reasoner=True, adopt_implicit_action_reasoner=True, downsample_based_implicit_extractor=True),
+        # You can modify these design choices based on the specific tasks and dataset.
+        model=acot_vla.ACOTConfig(
+            coarse_action_horizon=30,
+            action_horizon=30,
+            paligemma_variant="gemma_2b_lora",
+            adopt_explicit_action_reasoner=True,
+            adopt_implicit_action_reasoner=True,
+            downsample_based_implicit_extractor=True,
+        ),
         data=LerobotACOTGo2DataConfig(
-            default_prompt = "This is the icra simulation challenge baseline config. Please refer to the README for details.",
+            default_prompt="This is the icra simulation challenge baseline config. Please refer to the README for details.",
             # Fill in the 9 tasks for training. You can use all 9 tasks, or a subset of them based on your preference.
-            repo_id = [
-                "/mnt/public/E6/lerobot/7819/task_5833", # Pouring workpieces, single-arm task, uses right hand only
-                "/mnt/public/E6/lerobot/7820/task_5832", # Opening a door, single-arm task, uses right hand only
-                "/mnt/public/E6/lerobot/8153", # Scooping popcorn, single-arm task, uses right hand only
-                "/mnt/public/E6/lerobot/7821/task_5829", # Carrying a pot, dual-arm task, uses both hands simultaneously
-
-                "/mnt/public/E6/lerobot/7837/task_5441", # Grabbing toys, dual-arm task, uses left or right hand based on instruction
-                "/mnt/public/E6/lerobot/7944/task_6100", # Supermarket item retrieval, dual-arm task, uses left or right hand based on instruction
-                "/mnt/public/E6/lerobot/7818/task_5853", # Supermarket restocking, dual-arm task, uses left or right hand based on instruction
-                "/mnt/public/E6/lerobot/8169/2026021101/gripper/task_6167", # packages sorting, grasps objects based on instruction, single-arm task but involves waist movement
-
-                "/mnt/public/E6/lerobot/7878//task_5828", # Arranging the table, dual-arm task, uses both hands simultaneously
+            repo_id=[
+                "/mnt/public/E6/lerobot/7819/task_5833",  # Pouring workpieces, single-arm task, uses right hand only
+                "/mnt/public/E6/lerobot/7820/task_5832",  # Opening a door, single-arm task, uses right hand only
+                "/mnt/public/E6/lerobot/8153",  # Scooping popcorn, single-arm task, uses right hand only
+                "/mnt/public/E6/lerobot/7821/task_5829",  # Carrying a pot, dual-arm task, uses both hands simultaneously
+                "/mnt/public/E6/lerobot/7837/task_5441",  # Grabbing toys, dual-arm task, uses left or right hand based on instruction
+                "/mnt/public/E6/lerobot/7944/task_6100",  # Supermarket item retrieval, dual-arm task, uses left or right hand based on instruction
+                "/mnt/public/E6/lerobot/7818/task_5853",  # Supermarket restocking, dual-arm task, uses left or right hand based on instruction
+                "/mnt/public/E6/lerobot/8169/2026021101/gripper/task_6167",  # packages sorting, grasps objects based on instruction, single-arm task but involves waist movement
+                "/mnt/public/E6/lerobot/7878//task_5828",  # Arranging the table, dual-arm task, uses both hands simultaneously
             ],
             # Set the asset dir to specify normalization stats calculated from the dataset
             assets=AssetsConfig(
                 assets_dir=None,
                 asset_id="/mnt/public/zhonglinqing/data/datasets/genie_sim_icra_datasets/nine_dataset_merge_assets",
             ),
-            # this line defines a mapping from task name to (prompt, probability of replacement) for training. 
-            # If the current episode's task name matches one of the keys in the mapping, then with the corresponding probability, 
-            # the original prompt (loaded from the dataset based on the task name) will be replaced with the provided prompt. 
+            # this line defines a mapping from task name to (prompt, probability of replacement) for training.
+            # If the current episode's task name matches one of the keys in the mapping, then with the corresponding probability,
+            # the original prompt (loaded from the dataset based on the task name) will be replaced with the provided prompt.
             # This allows for more diverse and potentially more informative prompts during training.
-            prompt_map_inject_to_training = {
+            prompt_map_inject_to_training={
                 # task name: (prompt to replace vanilla annotation, probability to replace)
                 "Unload workpiece_icra_SIM": ("Pour the workpiece into the box", 0.5),
                 "Turn the doorknob": ("Turn the doorknob and push the door", 0.5),
                 "Make popcorn": ("Scoop the popcorn and pour it into the popcorn bucket", 0.5),
                 "Carry the pot": ("Grasp the two handles of the pot and place it on the stove", 0.5),
-
                 "Insert building block holes_2_SIM": (
                     "Pick up the yellow circular block from the table, "
                     "and place it into the round hole of the block box",
-                    0.2
+                    0.2,
                 ),
                 "Remove misplaced beverages from shelves": (
-                    "Pick up the incorrectly placed item from the shelf, "
-                    "and place it into the shopping basket",
-                    0.2
+                    "Pick up the incorrectly placed item from the shelf, and place it into the shopping basket",
+                    0.2,
                 ),
                 "Stock supermarket shelves  \nStraighten products  \nAttend ICRA conference  \nOperate SIM card": (
                     "Pick up the wei-chuan orange juice in the shopping basket, "
                     "and place it on the shelf. "
                     "Then, straighten the toppled wei-chuan grape juice",
-                    0.2
+                    0.2,
                 ),
                 "Sort packages": (
                     "Grab the <color> package on the table, "
@@ -1874,19 +2049,18 @@ _CONFIGS = [
                     "Then, grab the package, "
                     "rotate the waist and place the package in the blue bin. "
                     "Finally, return the waist back to face the initial table",
-                    0.2
+                    0.2,
                 ),
-
                 "Clear the desktop": (
                     "Pick up the pen on the left side and place it into the pen holder, "
                     "close the laptop, "
                     "pick up the tissue on the table and place it into the trash bin on the right size. "
                     "Then, pick up the mouse and place it on the right side of the laptop. "
                     "Finally, straighten the colored pencil box",
-                    0.5
+                    0.5,
                 ),
             },
-            repack_transforms =_transforms.Group(
+            repack_transforms=_transforms.Group(
                 inputs=[
                     _transforms.RepackTransform(
                         {
@@ -1900,43 +2074,160 @@ _CONFIGS = [
                             "prompt": "prompt",
                             # repack task name and episode id here for specific prompt replacement in training
                             "task": "task",
-                            "episode_index": "episode_index"
+                            "episode_index": "episode_index",
                         }
                     )
                 ]
             ),
             # this line allows using episode level annotation for training, essential for instruction following
-            base_config = DataConfig(dataloader_sampler = "subtask", prompt_from_hl_instruction = True),
-            # this line is important for action cot training, it shifts the action sequence by a certain number of steps 
-            # to create the input for the coarse action reasoner and the final action head. 
-            # You can tune these values based on the characteristics of your dataset. 
+            base_config=DataConfig(dataloader_sampler="subtask", prompt_from_hl_instruction=True),
+            # this line is important for action cot training, it shifts the action sequence by a certain number of steps
+            # to create the input for the coarse action reasoner and the final action head.
+            # You can tune these values based on the characteristics of your dataset.
             # Generally, we find that having a small positive shift (e.g. 1 or 2) works well.
-            joint_action_shifts = (2, 1),
+            joint_action_shifts=(2, 1),
             # if using delta action to train model is excepted, set True in extra_delta_transform
-            extra_delta_transform = (True, True),
+            extra_delta_transform=(True, True),
             # delta_action_mask controls which dimensions of the action are used for delta action transformation.
-            delta_action_mask = _transforms.make_bool_mask(14, -18)
+            delta_action_mask=_transforms.make_bool_mask(14, -18),
         ),
-        lr_schedule = _optimizer.CosineDecaySchedule(
-            warmup_steps = 10_000,
-            peak_lr = 5e-5,
-            decay_steps = 1_000_000,
-            decay_lr = 5e-5,
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,
+            peak_lr=5e-5,
+            decay_steps=1_000_000,
+            decay_lr=5e-5,
         ),
-        optimizer = _optimizer.AdamW(clip_gradient_norm=1.0),
-        ema_decay = 0.999,
-        weight_loader = weight_loaders.ACOTCheckpointWeightLoader(
-            "/mnt/public/zhonglinqing/pkgs/pi05_model/params"
-        ),
-        num_train_steps = 50_000,
-        save_interval = 5000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 200,
-        num_workers = 24 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
-        batch_size = 256 if not os.getenv("DEBUG_MODE", default=False) == "true" else 16,
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+        ema_decay=0.999,
+        weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
+        num_train_steps=50_000,
+        save_interval=5000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 200,
+        num_workers=24 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
+        batch_size=256 if not os.getenv("DEBUG_MODE", default=False) == "true" else 16,
         # You can select to freeze certain parts of the model during training by setting the corresponding flags to True
-        freeze_filter = acot_vla.ACOTConfig(paligemma_variant="gemma_2b_lora").get_freeze_filter(
-            freeze_vision = False, freeze_llm = True, freeze_llm_embedder=True, freeze_dual_ae=[False, False]
-        )
-    )
+        freeze_filter=acot_vla.ACOTConfig(paligemma_variant="gemma_2b_lora").get_freeze_filter(
+            freeze_vision=False, freeze_llm=True, freeze_llm_embedder=True, freeze_dual_ae=[False, False]
+        ),
+    ),
+    # ============ MyModal: Temporal SigLIP + Noise Expert ============
+    TrainConfig(
+        name="acot_r2a_mymodal_temporal_noise",
+        model=acot_vla_mymodal.ACOTMyModalConfig(
+            coarse_action_horizon=30,
+            action_horizon=30,
+            paligemma_variant="gemma_2b_lora",
+            adopt_explicit_action_reasoner=True,
+            adopt_implicit_action_reasoner=True,
+            downsample_based_implicit_extractor=True,
+            num_history_frames=4,
+            temporal_encoder_layers=6,
+            adopt_noise_expert=True,
+        ),
+        data=LerobotACOTTemporalGo2DataConfig(
+            default_prompt="This is the R2A challenge with temporal encoding.",
+            repo_id=[
+                "/mnt/nas/Reasoning2Action-Sim/dataset_without_depth/pour_workpiece",
+                "/mnt/nas/Reasoning2Action-Sim/dataset_without_depth/open_door",
+                "/mnt/nas/Reasoning2Action-Sim/dataset_without_depth/scoop_popcorn",
+                "/mnt/nas/Reasoning2Action-Sim/dataset_without_depth/hold_pot",
+                "/mnt/nas/Reasoning2Action-Sim/dataset_without_depth/place_block_into_box",
+                "/mnt/nas/Reasoning2Action-Sim/dataset_without_depth/take_wrong_item_shelf",
+                "/mnt/nas/Reasoning2Action-Sim/dataset_without_depth/stock_and_straighten_shelf",
+                "/mnt/nas/Reasoning2Action-Sim/dataset_without_depth/sorting_packages_part_1",
+                "/mnt/nas/Reasoning2Action-Sim/dataset_without_depth/sorting_packages_part_2",
+                "/mnt/nas/Reasoning2Action-Sim/dataset_without_depth/sorting_packages_part_3",
+                "/mnt/nas/Reasoning2Action-Sim/dataset_without_depth/clean_the_desktop_addition",
+                "/mnt/nas/Reasoning2Action-Sim/dataset_without_depth/clean_the_desktop_part_1",
+                "/mnt/nas/Reasoning2Action-Sim/dataset_without_depth/clean_the_desktop_part_2",
+            ],
+            assets=AssetsConfig(assets_dir="./assets", asset_id="acot_r2a_mymodal_temporal_noise/norm_stats"),
+            prompt_map_inject_to_training={
+                "Unload workpiece_icra_SIM": ("Pour the workpiece into the box", 0.5),
+                "Turn the doorknob": ("Turn the doorknob and push the door", 0.5),
+                "Make popcorn": ("Scoop the popcorn and pour it into the popcorn bucket", 0.5),
+                "Carry the pot": ("Grasp the two handles of the pot and place it on the stove", 0.5),
+                "Insert building block holes_2_SIM": (
+                    "Pick up the yellow circular block from the table, "
+                    "and place it into the round hole of the block box",
+                    0.2,
+                ),
+                "Remove misplaced beverages from shelves": (
+                    "Pick up the incorrectly placed item from the shelf, and place it into the shopping basket",
+                    0.2,
+                ),
+                "Stock supermarket shelves  \nStraighten products  \nAttend ICRA conference  \nOperate SIM card": (
+                    "Pick up the wei-chuan orange juice in the shopping basket, "
+                    "and place it on the shelf. "
+                    "Then, straighten the toppled wei-chuan grape juice",
+                    0.2,
+                ),
+                "Sort packages": (
+                    "Grab the <color> package on the table, "
+                    "turn the waist right to face the barcode scanner, "
+                    "place the package on the scanning table with the barcode facing up. "
+                    "Then, grab the package, "
+                    "rotate the waist and place the package in the blue bin. "
+                    "Finally, return the waist back to face the initial table",
+                    0.2,
+                ),
+                "Clear the desktop": (
+                    "Pick up the pen on the left side and place it into the pen holder, "
+                    "close the laptop, "
+                    "pick up the tissue on the table and place it into the trash bin on the right size. "
+                    "Then, pick up the mouse and place it on the right side of the laptop. "
+                    "Finally, straighten the colored pencil box",
+                    0.5,
+                ),
+            },
+            repack_transforms=_transforms.Group(
+                inputs=[
+                    _transforms.RepackTransform(
+                        {
+                            "images": {
+                                "top_head": "observation.images.top_head",
+                                "hand_left": "observation.images.hand_left",
+                                "hand_right": "observation.images.hand_right",
+                            },
+                            "state": "observation.state",
+                            "actions": "action",
+                            "prompt": "prompt",
+                            "task": "task",
+                            "episode_index": "episode_index",
+                        }
+                    )
+                ]
+            ),
+            base_config=DataConfig(dataloader_sampler="subtask", prompt_from_hl_instruction=True),
+            joint_action_shifts=(2, 1),
+            extra_delta_transform=(True, True),
+            delta_action_mask=_transforms.make_bool_mask(14, -18),
+            num_history_frames=4,
+        ),
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,
+            peak_lr=5e-5,
+            decay_steps=1_000_000,
+            decay_lr=5e-5,
+        ),
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+        ema_decay=None,
+        weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/nas/pi05_model/params"),
+        num_train_steps=50_000,
+        log_interval=200,
+        save_interval=1000,
+        num_workers=4,
+        batch_size=4,
+        freeze_filter=acot_vla_mymodal.ACOTMyModalConfig(
+            paligemma_variant="gemma_2b_lora",
+        ).get_freeze_filter(
+            freeze_vision=False,
+            freeze_llm=True,
+            freeze_llm_embedder=True,
+            freeze_dual_ae=[False, False],
+            freeze_temporal=False,
+            freeze_noise_expert=False,
+        ),
+    ),
 ]
 
 if len({config.name for config in _CONFIGS}) != len(_CONFIGS):

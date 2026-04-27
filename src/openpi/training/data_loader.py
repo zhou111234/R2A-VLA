@@ -1,4 +1,5 @@
 from collections.abc import Iterator, Sequence
+import logging
 import multiprocessing
 import os
 import typing
@@ -14,6 +15,7 @@ import openpi.models.model as _model
 import openpi.training.config as _config
 from openpi.training.droid_rlds_dataset import DroidRldsDataset
 import openpi.transforms as _transforms
+from openpi.training.temporal_dataset import TemporalFrameWrapper
 
 T_co = TypeVar("T_co", covariant=True)
 
@@ -360,6 +362,14 @@ def create_torch_data_loader(
         seed: The seed to use for shuffling the data.
     """
     dataset = create_torch_dataset(data_config, model_config)
+
+    num_hist = getattr(data_config, "num_history_frames", 1)
+    if num_hist > 1:
+        logging.getLogger("data_loader").info(
+            f"Wrapping dataset with TemporalFrameWrapper (T={num_hist})"
+        )
+        dataset = TemporalFrameWrapper(dataset, num_history_frames=num_hist)
+
     dataset = transform_dataset(dataset, data_config, skip_norm_stats=skip_norm_stats)
 
     sampler = None

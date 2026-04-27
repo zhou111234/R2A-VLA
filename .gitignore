@@ -170,3 +170,9 @@ cython_debug/
 logs/
 *exps*
 .vscode/
+# R2A-VLA: Examples that require modification (not compatible with R2A-VLA input format)
+examples/libero/
+examples/aloha_real/
+examples/aloha_sim/
+examples/droid/
+examples/ur5/

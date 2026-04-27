@@ -22,6 +22,7 @@ logger = logging.getLogger("openpi")
 
 ArrayT = TypeVar("ArrayT", at.Array, jax.ShapeDtypeStruct)
 
+
 def convert_str_keys_to_int(d):
     if isinstance(d, dict):
         new_d = {}
@@ -46,6 +47,7 @@ class ModelType(enum.Enum):
     PI05 = "pi05"
     ACOT_VLA_PI0 = "acot_pi0"
     ACOT_VLA_PI05 = "acot_pi05"
+
 
 # The model always expects these images
 IMAGE_KEYS = (
@@ -150,6 +152,7 @@ class Observation(Generic[ArrayT]):
 # produced by the data transforms.
 Actions = at.Float[ArrayT, "*b ah ad"]
 CoarseActions = at.Float[ArrayT, "*b ch ad"]
+
 
 def preprocess_observation(
     rng: at.KeyArrayLike | None,
@@ -319,14 +322,14 @@ def restore_params(
 
     with ocp.PyTreeCheckpointer() as ckptr:
         metadata = ckptr.metadata(params_path)
-        item = {"params": metadata["params"]}
+        item = {"params": metadata.item_metadata.tree["params"]}
 
         params = ckptr.restore(
             params_path,
             ocp.args.PyTreeRestore(
                 item=item,
                 restore_args=jax.tree.map(
-                    lambda _: ocp.ArrayRestoreArgs(sharding=sharding, restore_type=restore_type, dtype=dtype), item
+                    lambda _: ocp.ArrayRestoreArgs(sharding=sharding, restore_type=restore_type), item
                 ),
             ),
         )["params"]

@@ -20,7 +20,16 @@ logger = logging.getLogger("ACoT_VLA")
 
 
 class MLP(nnx.Module):
-    def __init__(self, input_dim: int, hidden_dim: int, output_dim: int, *, activate: bool = True, rngs: nnx.Rngs, param_dtype=jnp.float32):
+    def __init__(
+        self,
+        input_dim: int,
+        hidden_dim: int,
+        output_dim: int,
+        *,
+        activate: bool = True,
+        rngs: nnx.Rngs,
+        param_dtype=jnp.float32,
+    ):
         self.fc1 = nnx.Linear(input_dim, hidden_dim, rngs=rngs, param_dtype=param_dtype)
         self.fc2 = nnx.Linear(hidden_dim, hidden_dim, rngs=rngs, param_dtype=param_dtype)
         self.fc3 = nnx.Linear(hidden_dim, output_dim, rngs=rngs, param_dtype=param_dtype)
@@ -32,9 +41,20 @@ class MLP(nnx.Module):
         else:
             return self.fc3(self.fc2(self.fc1(x)))
 
+
 class LearnableQueryExtractor(nnx.Module):
-    def __init__(self, num_queries: int, dim: int, output_dim: int, depth: int, rngs: nnx.Rngs, param_dtype = jnp.float32,
-                 heads: int = 8, head_dim: int = 256, group_size: int = 3):
+    def __init__(
+        self,
+        num_queries: int,
+        dim: int,
+        output_dim: int,
+        depth: int,
+        rngs: nnx.Rngs,
+        param_dtype=jnp.float32,
+        heads: int = 8,
+        head_dim: int = 256,
+        group_size: int = 3,
+    ):
         """
         Args:
             num_queries: num of learnable query for each layer
@@ -52,28 +72,32 @@ class LearnableQueryExtractor(nnx.Module):
         self.group_size = group_size
         self.num_groups = depth // group_size
 
-        self.query_params = [
-            nnx.Param(jax.random.normal(rngs.params(), (num_queries, dim)))
-            for _ in range(self.depth)
-        ]
+        self.query_params = [nnx.Param(jax.random.normal(rngs.params(), (num_queries, dim))) for _ in range(self.depth)]
 
         self.k_proj = [
-            nnx.Linear(in_features=self.dim, out_features=self.heads * self.head_dim, rngs=rngs, param_dtype=param_dtype)
+            nnx.Linear(
+                in_features=self.dim, out_features=self.heads * self.head_dim, rngs=rngs, param_dtype=param_dtype
+            )
             for _ in range(self.num_groups)
         ]
         self.v_proj = [
-            nnx.Linear(in_features=self.dim, out_features=self.heads * self.head_dim, rngs=rngs, param_dtype=param_dtype)
+            nnx.Linear(
+                in_features=self.dim, out_features=self.heads * self.head_dim, rngs=rngs, param_dtype=param_dtype
+            )
             for _ in range(self.num_groups)
         ]
         self.q_proj = [
-            nnx.Linear(in_features=self.dim, out_features=self.heads * self.head_dim, rngs=rngs, param_dtype=param_dtype)
+            nnx.Linear(
+                in_features=self.dim, out_features=self.heads * self.head_dim, rngs=rngs, param_dtype=param_dtype
+            )
             for _ in range(self.num_groups)
         ]
         self.out_proj = [
-            nnx.Linear(in_features=self.heads * self.head_dim, out_features=output_dim, rngs=rngs, param_dtype=param_dtype)
+            nnx.Linear(
+                in_features=self.heads * self.head_dim, out_features=output_dim, rngs=rngs, param_dtype=param_dtype
+            )
             for _ in range(self.num_groups)
         ]
-
 
     def __call__(self, K: jax.Array, V: jax.Array) -> jax.Array:
         """
@@ -103,8 +127,17 @@ class LearnableQueryExtractor(nnx.Module):
 
 
 class AttentionPoolingExtractor(nnx.Module):
-    def __init__(self, dim: int, output_dim: int, depth: int, rngs: nnx.Rngs, param_dtype = jnp.float32,
-        heads: int = 8, head_dim: int = 256, group_size: int = 3):
+    def __init__(
+        self,
+        dim: int,
+        output_dim: int,
+        depth: int,
+        rngs: nnx.Rngs,
+        param_dtype=jnp.float32,
+        heads: int = 8,
+        head_dim: int = 256,
+        group_size: int = 3,
+    ):
         self.dim = dim
         self.depth = depth
         self.heads = heads
@@ -113,22 +146,29 @@ class AttentionPoolingExtractor(nnx.Module):
         self.num_groups = depth // group_size
 
         self.k_proj = [
-            nnx.Linear(in_features=self.dim, out_features=self.heads * self.head_dim, rngs=rngs, param_dtype=param_dtype)
+            nnx.Linear(
+                in_features=self.dim, out_features=self.heads * self.head_dim, rngs=rngs, param_dtype=param_dtype
+            )
             for _ in range(self.num_groups)
         ]
         self.v_proj = [
-            nnx.Linear(in_features=self.dim, out_features=self.heads * self.head_dim, rngs=rngs, param_dtype=param_dtype)
+            nnx.Linear(
+                in_features=self.dim, out_features=self.heads * self.head_dim, rngs=rngs, param_dtype=param_dtype
+            )
             for _ in range(self.num_groups)
         ]
         self.q_proj = [
-            nnx.Linear(in_features=self.dim, out_features=self.heads * self.head_dim, rngs=rngs, param_dtype=param_dtype)
+            nnx.Linear(
+                in_features=self.dim, out_features=self.heads * self.head_dim, rngs=rngs, param_dtype=param_dtype
+            )
             for _ in range(self.num_groups)
         ]
         self.out_proj = [
-            nnx.Linear(in_features=self.heads * self.head_dim, out_features=output_dim, rngs=rngs, param_dtype=param_dtype)
+            nnx.Linear(
+                in_features=self.heads * self.head_dim, out_features=output_dim, rngs=rngs, param_dtype=param_dtype
+            )
             for _ in range(self.num_groups)
         ]
-
 
     def __call__(self, K: jax.Array, V: jax.Array) -> jax.Array:
         B, L, T, D = K.shape
@@ -166,7 +206,7 @@ class DownsampleExtractor(nnx.Module):
         num_queries: int = 1,
         heads: int = 8,
     ):
-        
+
         self.dim = dim
         self.depth = depth
         self.downsample_dim = downsample_dim
@@ -176,10 +216,7 @@ class DownsampleExtractor(nnx.Module):
         self.heads = heads
         self.head_dim = downsample_dim // heads
 
-        self.query_params = [
-            nnx.Param(jax.random.normal(rngs.params(), (num_queries, dim)))
-            for _ in range(self.depth)
-        ]
+        self.query_params = [nnx.Param(jax.random.normal(rngs.params(), (num_queries, dim))) for _ in range(self.depth)]
 
         self.q_proj = [
             nnx.Linear(in_features=dim, out_features=self.downsample_dim, rngs=rngs, param_dtype=param_dtype)
@@ -193,7 +230,7 @@ class DownsampleExtractor(nnx.Module):
             nnx.Linear(in_features=dim, out_features=self.downsample_dim, rngs=rngs, param_dtype=param_dtype)
             for _ in range(self.num_groups)
         ]
-        
+
         self.out_proj = [
             nnx.Linear(in_features=self.downsample_dim, out_features=output_dim, rngs=rngs, param_dtype=param_dtype)
             for _ in range(self.num_groups)
@@ -206,54 +243,67 @@ class DownsampleExtractor(nnx.Module):
         """
         B, L, T, D = K.shape
         outputs = []
-        
+
         for l in range(L):
             g = l // self.group_size
-            K_l, V_l = K[:, l, :, :], V[:, l, :, :] # (B, T, D)
+            K_l, V_l = K[:, l, :, :], V[:, l, :, :]  # (B, T, D)
 
             # Q_l: (1, Q, D) -> (1, Q, downsample_dim) -> (1, H, Q, Hd)
-            Q_l_learnable = self.query_params[l][None, :, :] # (1, num_queries, D)
+            Q_l_learnable = self.query_params[l][None, :, :]  # (1, num_queries, D)
             Q_proj = self.q_proj[g](Q_l_learnable)
-            Q_proj = Q_proj.reshape(1, self.num_queries, self.heads, self.head_dim).transpose(0, 2, 1, 3) 
-            
+            Q_proj = Q_proj.reshape(1, self.num_queries, self.heads, self.head_dim).transpose(0, 2, 1, 3)
+
             # K_l: (B, T, D) -> (B, T, downsample_dim) -> (B, H, T, Hd)
             K_proj = self.k_proj[g](K_l)
-            K_proj = K_proj.reshape(B, T, self.heads, self.head_dim).transpose(0, 2, 1, 3) 
-            
+            K_proj = K_proj.reshape(B, T, self.heads, self.head_dim).transpose(0, 2, 1, 3)
+
             # V_l: (B, T, D) -> (B, T, downsample_dim) -> (B, H, T, Hd)
             V_proj = self.v_proj[g](V_l)
-            V_proj = V_proj.reshape(B, T, self.heads, self.head_dim).transpose(0, 2, 1, 3) 
+            V_proj = V_proj.reshape(B, T, self.heads, self.head_dim).transpose(0, 2, 1, 3)
 
-            Q_proj_batched = jnp.tile(Q_proj, [B, 1, 1, 1]) 
-            
+            Q_proj_batched = jnp.tile(Q_proj, [B, 1, 1, 1])
+
             attn = jnp.einsum("bhqd,bhkd->bhqk", Q_proj_batched, K_proj) / jnp.sqrt(self.head_dim)
             attn = nnx.softmax(attn, axis=-1)
-            
-            pooled = jnp.einsum("bhqk,bhkd->bhqd", attn, V_proj) 
+
+            pooled = jnp.einsum("bhqk,bhkd->bhqd", attn, V_proj)
             pooled = pooled.mean(axis=2) if self.num_queries > 1 else pooled.squeeze(axis=2)
-            
+
             pooled = pooled.transpose(0, 2, 1).reshape(B, self.downsample_dim)
-            feat = self.out_proj[g](pooled) # (B, out_dim)
+            feat = self.out_proj[g](pooled)  # (B, out_dim)
             outputs.append(feat)
 
-        return jnp.stack(outputs, axis=1) # (B, L, out_dim)
+        return jnp.stack(outputs, axis=1)  # (B, L, out_dim)
 
 
 class UnifiedAttentionModule(nnx.Module):
-    def __init__(self, in_dim_1: int, in_dim_2: int, out_dim: int, apply_sigmoid: bool, hidden_dim: int = 128, num_heads: int = 4, *, rngs: nnx.Rngs, param_dtype=jnp.float32):
+    def __init__(
+        self,
+        in_dim_1: int,
+        in_dim_2: int,
+        out_dim: int,
+        apply_sigmoid: bool,
+        hidden_dim: int = 128,
+        num_heads: int = 4,
+        *,
+        rngs: nnx.Rngs,
+        param_dtype=jnp.float32,
+    ):
 
         self.q_proj = nnx.Linear(in_features=in_dim_1, out_features=hidden_dim, rngs=rngs, param_dtype=param_dtype)
         self.kv_proj = nnx.Linear(in_features=in_dim_2, out_features=hidden_dim * 2, rngs=rngs, param_dtype=param_dtype)
-        self.attn = nnx.MultiHeadAttention(in_features=hidden_dim, num_heads=num_heads, rngs=rngs, param_dtype=param_dtype)
+        self.attn = nnx.MultiHeadAttention(
+            in_features=hidden_dim, num_heads=num_heads, rngs=rngs, param_dtype=param_dtype
+        )
         self.fc_out = nnx.Linear(in_features=hidden_dim, out_features=out_dim, rngs=rngs, param_dtype=param_dtype)
         self.apply_sigmoid = apply_sigmoid
 
     def __call__(self, feat_1: jnp.ndarray, feat_2: jnp.ndarray, decode: bool = False) -> jnp.ndarray:
-        
+
         Q = self.q_proj(feat_1)
         KV = self.kv_proj(feat_2)
         K, V = jnp.split(KV, 2, axis=-1)
-        
+
         attn_out = self.attn(Q, K, V, decode=decode)
         output = self.fc_out(attn_out)
 
@@ -329,23 +379,24 @@ class ACOTConfig(_model.BaseModelConfig):
 
         return observation_spec, action_spec
 
-
-    def get_freeze_filter(self, freeze_llm = False, freeze_llm_embedder = True, freeze_vision = False, freeze_dual_ae = [False, False]) -> nnx.filterlib.Filter:
+    def get_freeze_filter(
+        self, freeze_llm=False, freeze_llm_embedder=True, freeze_vision=False, freeze_dual_ae=[False, False]
+    ) -> nnx.filterlib.Filter:
         gemma_params_filter = nnx_utils.PathRegex(".*llm.*")
-        paligemma_base_filter = nnx_utils.PathRegex(".*llm(?!.*_1|.*_2).*") 
+        paligemma_base_filter = nnx_utils.PathRegex(".*llm(?!.*_1|.*_2).*")
         coarse_action_expert_params_filter = nnx_utils.PathRegex(".*llm.*_1.*")
         action_expert_params_filter = nnx_utils.PathRegex(".*llm.*_2.*")
         embedder_filter = nnx_utils.PathRegex(".*llm.*embed.*|.*llm.*embedding.*")
         lora_filter = nnx_utils.PathRegex(".*lora.*")
 
         freeze_paths = []
-        
+
         if freeze_vision:
             freeze_paths.append(nnx_utils.PathRegex(".*img.*"))
-            
+
         if freeze_llm:
             freeze_paths.append(paligemma_base_filter)
-            
+
         if freeze_dual_ae[0]:
             freeze_paths.append(coarse_action_expert_params_filter)
         if freeze_dual_ae[1]:
@@ -367,10 +418,7 @@ class ACOTConfig(_model.BaseModelConfig):
         if not keep_alive_paths:
             return base_freeze_filter
         else:
-            return nnx.All(
-                base_freeze_filter,
-                nnx.Not(nnx.Any(*keep_alive_paths))
-            )
+            return nnx.All(base_freeze_filter, nnx.Not(nnx.Any(*keep_alive_paths)))
 
 
 class ACOT_VLA(_model.BaseModel):
@@ -399,26 +447,38 @@ class ACOT_VLA(_model.BaseModel):
                 dtype_mm=config.dtype,
             )
         )
-        img.lazy_init(next(iter(config.fake_obs().images.values())), train=False, rngs=rngs)
+        _fake_img = next(iter(config.fake_obs().images.values()))
+        if _fake_img.ndim == 5:
+            B, T, H, W, C = _fake_img.shape
+            _fake_img = _fake_img.reshape(B * T, H, W, C)
+        img.lazy_init(_fake_img, train=False, rngs=rngs)
         self.PaliGemma = nnx.Dict(llm=llm, img=img)
         self.coarse_action_in_proj = nnx.Linear(config.action_dim, coarse_action_expert_config.width, rngs=rngs)
         self.action_in_proj = nnx.Linear(config.action_dim, action_expert_config.width, rngs=rngs)
 
         if self.pi05:
-            self.coarse_time_mlp_in = nnx.Linear(coarse_action_expert_config.width, coarse_action_expert_config.width, rngs=rngs)
-            self.coarse_time_mlp_out = nnx.Linear(coarse_action_expert_config.width, coarse_action_expert_config.width, rngs=rngs)
+            self.coarse_time_mlp_in = nnx.Linear(
+                coarse_action_expert_config.width, coarse_action_expert_config.width, rngs=rngs
+            )
+            self.coarse_time_mlp_out = nnx.Linear(
+                coarse_action_expert_config.width, coarse_action_expert_config.width, rngs=rngs
+            )
             self.time_mlp_in = nnx.Linear(action_expert_config.width, action_expert_config.width, rngs=rngs)
             self.time_mlp_out = nnx.Linear(action_expert_config.width, action_expert_config.width, rngs=rngs)
         else:
             self.state_proj = nnx.Linear(config.action_dim, action_expert_config.width, rngs=rngs)
-            self.coarse_action_time_mlp_in = nnx.Linear(2 * coarse_action_expert_config.width, coarse_action_expert_config.width, rngs=rngs)
-            self.coarse_action_time_mlp_out = nnx.Linear(coarse_action_expert_config.width, coarse_action_expert_config.width, rngs=rngs)
+            self.coarse_action_time_mlp_in = nnx.Linear(
+                2 * coarse_action_expert_config.width, coarse_action_expert_config.width, rngs=rngs
+            )
+            self.coarse_action_time_mlp_out = nnx.Linear(
+                coarse_action_expert_config.width, coarse_action_expert_config.width, rngs=rngs
+            )
             self.action_time_mlp_in = nnx.Linear(2 * action_expert_config.width, action_expert_config.width, rngs=rngs)
             self.action_time_mlp_out = nnx.Linear(action_expert_config.width, action_expert_config.width, rngs=rngs)
 
         self.coarse_action_out_proj = nnx.Linear(coarse_action_expert_config.width, config.action_dim, rngs=rngs)
         self.action_out_proj = nnx.Linear(action_expert_config.width, config.action_dim, rngs=rngs)
-        
+
         self.adopt_explicit_action_reasoner = config.adopt_explicit_action_reasoner
         if self.adopt_explicit_action_reasoner:
             self.explicit_action_reasoner = UnifiedAttentionModule(
@@ -437,7 +497,6 @@ class ACOT_VLA(_model.BaseModel):
         self.downsample_based_implicit_extractor = config.downsample_based_implicit_extractor
 
         if self.adopt_implicit_action_reasoner:
-
             if self.query_based_implicit_extractor:
                 self.implicit_action_reasoner = LearnableQueryExtractor(
                     num_queries=8,
@@ -447,7 +506,7 @@ class ACOT_VLA(_model.BaseModel):
                     rngs=rngs,
                     heads=paligemma_config.num_heads,
                     head_dim=paligemma_config.head_dim,
-                    group_size=3
+                    group_size=3,
                 )
             elif self.attention_pooling_implicit_extractor:
                 self.implicit_action_reasoner = AttentionPoolingExtractor(
@@ -457,7 +516,7 @@ class ACOT_VLA(_model.BaseModel):
                     rngs=rngs,
                     heads=paligemma_config.num_heads,
                     head_dim=paligemma_config.head_dim,
-                    group_size=3
+                    group_size=3,
                 )
             elif self.downsample_based_implicit_extractor:
                 self.implicit_action_reasoner = DownsampleExtractor(
@@ -468,10 +527,12 @@ class ACOT_VLA(_model.BaseModel):
                     rngs=rngs,
                     downsample_dim=paligemma_config.head_dim // 2,
                     heads=paligemma_config.num_heads,
-                    group_size=3
+                    group_size=3,
                 )
             else:
-                raise ValueError("At least one extractor type must be selected when adopt_implicit_action_reasoner is True.")
+                raise ValueError(
+                    "At least one extractor type must be selected when adopt_implicit_action_reasoner is True."
+                )
             self.implicit_action_reasoner_interact = UnifiedAttentionModule(
                 in_dim_1=action_expert_config.width,
                 in_dim_2=action_expert_config.width,
@@ -483,8 +544,12 @@ class ACOT_VLA(_model.BaseModel):
             )
 
         if self.adopt_explicit_action_reasoner and self.adopt_implicit_action_reasoner:
-            self.explicit_action_reason_proj = nnx.Linear(2 * action_expert_config.width, action_expert_config.width, rngs=rngs)
-            self.implicit_action_reason_proj = nnx.Linear(2 * action_expert_config.width, action_expert_config.width, rngs=rngs)
+            self.explicit_action_reason_proj = nnx.Linear(
+                2 * action_expert_config.width, action_expert_config.width, rngs=rngs
+            )
+            self.implicit_action_reason_proj = nnx.Linear(
+                2 * action_expert_config.width, action_expert_config.width, rngs=rngs
+            )
             self.action_reasoning_fusion = UnifiedAttentionModule(
                 in_dim_1=2 * action_expert_config.width,
                 in_dim_2=2 * action_expert_config.width,
@@ -510,7 +575,6 @@ class ACOT_VLA(_model.BaseModel):
         # This attribute gets automatically set by model.train() and model.eval().
         self.deterministic = True
         self.coarse_action_horizon = config.coarse_action_horizon
-
 
     @at.typecheck
     def embed_prefix(
@@ -549,12 +613,13 @@ class ACOT_VLA(_model.BaseModel):
 
     @at.typecheck
     def embed_suffix(
-        self, obs: _model.Observation,
+        self,
+        obs: _model.Observation,
         noisy_actions,
         timestep: at.Float[at.Array, " b"],
         explicit_action_reason: Optional[jax.Array] = None,
         implicit_action_reason: Optional[jax.Array] = None,
-        suf_type = "reasoner"
+        suf_type="reasoner",
     ) -> tuple[
         at.Float[at.Array, "b s emb"],
         at.Bool[at.Array, "b s"],
@@ -622,50 +687,55 @@ class ACOT_VLA(_model.BaseModel):
                 explicit_action_reason_tokens = self.coarse_action_in_proj(explicit_action_reason)
                 # cross attention to get s^{ex} representations in the paper
                 aligned_explicit_action_reason_tokens = self.explicit_action_reasoner(
-                    action_expert_tokens,
-                    explicit_action_reason_tokens
+                    action_expert_tokens, explicit_action_reason_tokens
                 )
-                
+
                 # implicit_action_reason are already tokens, which is z^{im} wirtten in the paper
                 implicit_action_reason_tokens = implicit_action_reason
                 # cross attention to get s^{im} representations in the paper
                 aligned_implicit_action_reason_tokens = self.implicit_action_reasoner_interact(
-                    action_expert_tokens,
-                    implicit_action_reason_tokens
+                    action_expert_tokens, implicit_action_reason_tokens
                 )
 
                 # we project s^{ex} and s^{im} for dimension transform, but we did not explitly write it in the paper, we are sorry.
-                action_expert_tokens_explicit = jnp.concatenate([action_expert_tokens, aligned_explicit_action_reason_tokens], axis = -1)
+                action_expert_tokens_explicit = jnp.concatenate(
+                    [action_expert_tokens, aligned_explicit_action_reason_tokens], axis=-1
+                )
                 action_expert_tokens_explicit = self.explicit_action_reason_proj(action_expert_tokens_explicit)
 
-                action_expert_tokens_implicit = jnp.concatenate([action_expert_tokens, aligned_implicit_action_reason_tokens], axis = -1)
+                action_expert_tokens_implicit = jnp.concatenate(
+                    [action_expert_tokens, aligned_implicit_action_reason_tokens], axis=-1
+                )
                 action_expert_tokens_implicit = self.implicit_action_reason_proj(action_expert_tokens_implicit)
 
-                # concatenate and self attention fusion 
-                action_expert_tokens = jnp.concatenate([action_expert_tokens_explicit, action_expert_tokens_implicit], axis = -1)
+                # concatenate and self attention fusion
+                action_expert_tokens = jnp.concatenate(
+                    [action_expert_tokens_explicit, action_expert_tokens_implicit], axis=-1
+                )
                 action_expert_tokens = self.action_reasoning_fusion(action_expert_tokens, action_expert_tokens)
-
 
             elif self.adopt_explicit_action_reasoner:
                 explicit_action_reason_tokens = self.coarse_action_in_proj(explicit_action_reason)
                 aligned_explicit_action_reason_tokens = self.explicit_action_reasoner(
-                    action_expert_tokens,
-                    explicit_action_reason_tokens
+                    action_expert_tokens, explicit_action_reason_tokens
                 )
-                # concatenate and fusion 
-                action_expert_tokens = jnp.concatenate([action_expert_tokens, aligned_explicit_action_reason_tokens], axis = -1)
+                # concatenate and fusion
+                action_expert_tokens = jnp.concatenate(
+                    [action_expert_tokens, aligned_explicit_action_reason_tokens], axis=-1
+                )
                 action_expert_tokens = self.action_reasoning_fusion(action_expert_tokens)
 
             elif self.adopt_implicit_action_reasoner:
                 implicit_action_reason_tokens = implicit_action_reason
                 aligned_implicit_action_reason_tokens = self.implicit_action_reasoner_interact(
-                    action_expert_tokens,
-                    implicit_action_reason_tokens
+                    action_expert_tokens, implicit_action_reason_tokens
                 )
-                # concatenate and fusion 
-                action_expert_tokens = jnp.concatenate([action_expert_tokens, aligned_implicit_action_reason_tokens], axis = -1)
+                # concatenate and fusion
+                action_expert_tokens = jnp.concatenate(
+                    [action_expert_tokens, aligned_implicit_action_reason_tokens], axis=-1
+                )
                 action_expert_tokens = self.action_reasoning_fusion(action_expert_tokens)
-            
+
             else:
                 # keep vanilla
                 pass
@@ -693,10 +763,13 @@ class ACOT_VLA(_model.BaseModel):
 
     @override
     def compute_loss(
-        self, rng: at.KeyArrayLike,
+        self,
+        rng: at.KeyArrayLike,
         observation: _model.Observation,
         actions: _model.Actions,
-        coarse_actions: _model.CoarseActions, *, train: bool = False
+        coarse_actions: _model.CoarseActions,
+        *,
+        train: bool = False,
     ) -> at.Float[at.Array, "*b ah"]:
 
         # preprocess_rng, _, time_rng, coarse_action_noise_rng, _, expert_action_noise_rng = jax.random.split(rng, 6)
@@ -727,7 +800,9 @@ class ACOT_VLA(_model.BaseModel):
 
         if self.adopt_explicit_action_reasoner:
             # suffix forward to get explicit action reference
-            suffix_ref_action_tokens, suffix_ref_action_mask, suffix_ref_action_ar_mask, adarms_ref_action_cond = self.embed_suffix(observation, x_ref_t, time, suf_type = "reasoner")
+            suffix_ref_action_tokens, suffix_ref_action_mask, suffix_ref_action_ar_mask, adarms_ref_action_cond = (
+                self.embed_suffix(observation, x_ref_t, time, suf_type="reasoner")
+            )
 
             input_mask = jnp.concatenate([prefix_mask, suffix_ref_action_mask], axis=1)
             ar_mask = jnp.concatenate([prefix_ar_mask, suffix_ref_action_ar_mask], axis=0)
@@ -748,19 +823,21 @@ class ACOT_VLA(_model.BaseModel):
 
         if self.adopt_implicit_action_reasoner:
             K_all, V_all = kv_cache
-            K_rearranged = einops.rearrange(K_all, 'L B T 1 D -> B L T D')
-            V_rearranged = einops.rearrange(V_all, 'L B T 1 D -> B L T D')
+            K_rearranged = einops.rearrange(K_all, "L B T 1 D -> B L T D")
+            V_rearranged = einops.rearrange(V_all, "L B T 1 D -> B L T D")
             # implicit action reasoner
             implicit_action_reason = self.implicit_action_reasoner(K_rearranged, V_rearranged)
         else:
             implicit_action_reason = None
-        
+
         # suffix forward to get action prediction
         suffix_expert_tokens, suffix_expert_mask, suffix_expert_ar_mask, adarms_expert_cond = self.embed_suffix(
-            observation, x_expert_t, time,
+            observation,
+            x_expert_t,
+            time,
             explicit_action_reason=explicit_action_reason,
             implicit_action_reason=implicit_action_reason,
-            suf_type = "expert"
+            suf_type="expert",
         )
 
         input_mask = jnp.concatenate([prefix_mask, suffix_expert_mask], axis=1)
@@ -774,7 +851,6 @@ class ACOT_VLA(_model.BaseModel):
             positions=positions,
             adarms_cond=[None, None, adarms_expert_cond],
         )
-
 
         if self.adopt_explicit_action_reasoner:
             # trainer explicit action reasoner using flow matching
@@ -817,8 +893,8 @@ class ACOT_VLA(_model.BaseModel):
 
         if self.adopt_implicit_action_reasoner:
             K_all, V_all = kv_cache
-            K_rearranged = einops.rearrange(K_all, 'L B T 1 D -> B L T D')
-            V_rearranged = einops.rearrange(V_all, 'L B T 1 D -> B L T D')
+            K_rearranged = einops.rearrange(K_all, "L B T 1 D -> B L T D")
+            V_rearranged = einops.rearrange(V_all, "L B T 1 D -> B L T D")
             implicit_action_reason = self.implicit_action_reasoner(K_rearranged, V_rearranged)
         else:
             implicit_action_reason = None
@@ -826,7 +902,7 @@ class ACOT_VLA(_model.BaseModel):
         def step_explicit_action_reasoner(carry):
             x_t, time, step_idx = carry
             suffix_tokens, suffix_mask, suffix_ar_mask, adarms_cond = self.embed_suffix(
-                observation, x_t, jnp.broadcast_to(time, batch_size), suf_type = "reasoner"
+                observation, x_t, jnp.broadcast_to(time, batch_size), suf_type="reasoner"
             )
 
             suffix_attn_mask = make_attn_mask(suffix_mask, suffix_ar_mask)
@@ -849,24 +925,27 @@ class ACOT_VLA(_model.BaseModel):
             v_t = self.coarse_action_out_proj(suffix_out[:, -self.coarse_action_horizon :])
 
             return x_t + dt * v_t, time + dt, step_idx + 1
-        
+
         def cond_explicit_action_reasoner(carry):
             x_t, time, _ = carry
             return time >= -dt / 2
 
         if self.adopt_explicit_action_reasoner:
-            explicit_action_reason, _, _ = jax.lax.while_loop(cond_explicit_action_reasoner, step_explicit_action_reasoner, (ref_action_noise, 1.0, 1))
+            explicit_action_reason, _, _ = jax.lax.while_loop(
+                cond_explicit_action_reasoner, step_explicit_action_reasoner, (ref_action_noise, 1.0, 1)
+            )
         else:
             explicit_action_reason = None
-
 
         def step_expert(carry):
             x_t, time, step_idx = carry
             suffix_tokens, suffix_mask, suffix_ar_mask, adarms_cond = self.embed_suffix(
-                observation, x_t, jnp.broadcast_to(time, batch_size),
+                observation,
+                x_t,
+                jnp.broadcast_to(time, batch_size),
                 explicit_action_reason=explicit_action_reason,
                 implicit_action_reason=implicit_action_reason,
-                suf_type = "expert"
+                suf_type="expert",
             )
 
             suffix_attn_mask = make_attn_mask(suffix_mask, suffix_ar_mask)
@@ -892,7 +971,7 @@ class ACOT_VLA(_model.BaseModel):
         def cond_expert(carry):
             x_t, time, _ = carry
             return time >= -dt / 2
-        
+
         x_0_expert, _, _ = jax.lax.while_loop(cond_expert, step_expert, (expert_action_noise, 1.0, 1))
 
         if self.adopt_explicit_action_reasoner:

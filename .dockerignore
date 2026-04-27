@@ -1,3 +1,68 @@
-.venv
-checkpoints
-data
+# Git
+.git/
+.gitignore
+
+# Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyo
+*.pyd
+.Python
+*.so
+.cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Large files (not needed in build context)
+*.zip
+*.tar.gz
+*.tar
+# Checkpoints: we copy specific checkpoint in Dockerfile via build args
+# Don't exclude checkpoints/ entirely, or the explicit COPY will fail
+# Instead, exclude only old/unused checkpoint directories if needed
+# checkpoints/  <-- REMOVED: this would block all checkpoint copies
+logs/
+log/
+*.log
+
+# Docker (avoid copying Docker files into context)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Virtual environments (except .venv_lerobot which is explicitly copied)
+# !.venv_lerobot/  <-- This would allow it, but we handle it in build script
+.venv/
+venv*/
+.env/
+
+# Test and docs (optional, reduce size)
+tests/
+test/
+docs/
+*.md
+!README.md
+
+# Jupyter
+*.ipynb
+.ipynb_checkpoints/
+
+# Misc
+*.DS_Store
+Thumbs.db
+*.tmp
+.temp/
+tmp/

@@ -10,6 +10,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 from openpi_client import base_policy as _base_policy
+from openpi.shared.array_typing import disable_typechecking
 from typing_extensions import override
 
 from openpi import transforms as _transforms
@@ -51,7 +52,8 @@ class Policy(BasePolicy):
         outputs = {
             "state": inputs["state"]
         }
-        result = self._sample_actions(sample_rng, _model.Observation.from_dict(inputs), **self._sample_kwargs)
+        with disable_typechecking():
+            result = self._sample_actions(sample_rng, _model.Observation.from_dict(inputs), **self._sample_kwargs)
 
         if isinstance(result, dict):
             outputs.update(result)    
@@ -85,6 +87,7 @@ class Policy(BasePolicy):
             raw_state = jax.tree.map(lambda x: x, obs).get("state", None)
             assert raw_state is not None, "State is required for post-processing waist actions"
             # freeze four waist actions to the current state, utilizing only the last action for policy output
+            outputs["actions"] = outputs["actions"][:, :20]  # 截断到 20 维
             outputs["actions"][:, 16:20] = raw_state[16:20]
 
         return outputs
