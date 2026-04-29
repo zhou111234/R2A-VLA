@@ -441,21 +441,6 @@ dataset = LeroNetDataset.create(
 
 ---
 
-## 📖 引用
-
-如果您在研究中使用了本模型或代码，请引用：
-
-```bibtex
-@article{zhong2026acot,
-  title={ACoT-VLA: Action Chain-of-Thought for Vision-Language-Action Models},
-  author={Zhong, Linqing and Liu, Yi and Wei, Yifei and Xiong, Ziyu and Yao, Maoqing and Liu, Si and Ren, Guanghui},
-  journal={arXiv preprint arXiv:2601.11404},
-  year={2026}
-}
-```
-
----
-
 ## 🙏 致谢
 
 - 本项目基于 [OpenPI](https://github.com/Physical-Intelligence/openpi) 框架构建
