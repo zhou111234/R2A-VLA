@@ -1,4 +1,4 @@
-exclude: third_party/|.*\.Dockerfile$|Dockerfile\..*|.*test.*\.py$|test_.*\.py$
+exclude: third_party/
 
 repos:
   - repo: https://github.com/astral-sh/uv-pre-commit
@@ -10,9 +10,7 @@ repos:
     # Ruff version.
     rev: v0.8.6
     hooks:
-      # Run the linter - use ruff-ci.toml which has ignore rules for style warnings
+      # Run the linter.
       - id: ruff
-        args: [--fix, --config=ruff-ci.toml]
-        exclude: .*\.Dockerfile$|Dockerfile\..*|.*test.*\.py$|test_.*\.py$
+        args: [--fix]
       - id: ruff-format
-        exclude: .*\.Dockerfile$|Dockerfile\..*|.*test.*\.py$|test_.*\.py$
