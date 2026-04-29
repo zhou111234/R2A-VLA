@@ -58,7 +58,7 @@ class MlpBlock(nn.Module):
     dtype_mm: str = "float32"
 
     @nn.compact
-    def __call__(self, x, deterministic=True):  # noqa: FBT002
+    def __call__(self, x, deterministic=True):
         """Applies Transformer MlpBlock module."""
         inits = {
             "kernel_init": nn.initializers.xavier_uniform(),
@@ -81,7 +81,7 @@ class Encoder1DBlock(nn.Module):
     dtype_mm: str = "float32"
 
     @nn.compact
-    def __call__(self, x, deterministic=True):  # noqa: FBT002
+    def __call__(self, x, deterministic=True):
         out = {}
         x = sharding.activation_sharding_constraint(x)
         y = nn.LayerNorm(dtype=self.dtype_mm)(x)
@@ -120,7 +120,7 @@ class Encoder(nn.Module):
     dtype_mm: str = "float32"
 
     @nn.compact
-    def __call__(self, x, deterministic=True):  # noqa: FBT002
+    def __call__(self, x, deterministic=True):
         out = {}
 
         if self.scan:
@@ -290,7 +290,7 @@ class _Module(nn.Module):
         return x, out
 
 
-def Module(num_classes=None, *, variant=None, **kw):  # pylint: disable=invalid-name  # noqa: N802
+def Module(num_classes=None, *, variant=None, **kw):  # pylint: disable=invalid-name
     """Factory function, because linen really don't like what I'm doing!"""
     return _Module(num_classes, **{**decode_variant(variant), **kw})
 

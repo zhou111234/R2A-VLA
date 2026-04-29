@@ -118,6 +118,31 @@ ignore = [
     "PD008",  # Lots of false positives.
     "ISC001", # Disabling to support ruff format.
     "LOG015", # Use logger.info.
+    "PTH123", # open() vs Path.open().
+    "PTH111", # os.path.expanduser() vs Path.expanduser().
+    "PTH103", # os.makedirs() vs Path.mkdir().
+    "PTH120", # os.path.dirname() vs Path.parent.
+    "PTH119", # os.path.basename() vs Path.name.
+    "FBT003", # Boolean positional value.
+    "FBT002", # Boolean default argument.
+    "FBT001", # Boolean positional argument.
+    "N806",   # Variable name case.
+    "N803",   # Argument name case.
+    "N802",   # Function name convention.
+    "N801",   # Class name convention.
+    "N817",   # CamelCase imported as acronym.
+    "SIM102", # Nested if statements.
+    "E402",   # Module level import not at top.
+    "E741",   # Ambiguous variable name.
+    "PLW1508", # Invalid env default.
+    "F821",   # Undefined name.
+    "RUF002", # Ambiguous characters in docstrings.
+    "RUF003", # Ambiguous characters in comments.
+    "RUF012", # Mutable class attributes.
+    "UP038",  # X | Y in isinstance.
+    "SLF001", # Private member access (common in ML).
+    "PERF402", # Use list.copy (minor optimization).
+    "PLW2901", # For loop variable overwritten.
 ]
 unfixable = [
     "B905", # Fix defaults to strict=False, which is not what we want.

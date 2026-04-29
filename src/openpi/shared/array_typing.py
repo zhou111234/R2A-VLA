@@ -26,7 +26,7 @@ import jaxtyping._decorator
 # the problem is that custom PyTree nodes are sometimes initialized with arbitrary types (e.g., `jax.ShapeDtypeStruct`,
 # `jax.Sharding`, or even <object>) due to JAX tracing operations. this patch skips typechecking when the stack trace
 # contains `jax._src.tree_util`, which should only be the case during tree unflattening.
-_original_check_dataclass_annotations = jaxtyping._decorator._check_dataclass_annotations  # noqa: SLF001
+_original_check_dataclass_annotations = jaxtyping._decorator._check_dataclass_annotations
 
 
 def _check_dataclass_annotations(self, typechecker):
@@ -38,7 +38,7 @@ def _check_dataclass_annotations(self, typechecker):
     return None
 
 
-jaxtyping._decorator._check_dataclass_annotations = _check_dataclass_annotations  # noqa: SLF001
+jaxtyping._decorator._check_dataclass_annotations = _check_dataclass_annotations
 
 KeyArrayLike: TypeAlias = jax.typing.ArrayLike
 Params: TypeAlias = PyTree[Float[ArrayLike, "..."]]
@@ -54,7 +54,7 @@ def typecheck(t: T) -> T:
 @contextlib.contextmanager
 def disable_typechecking():
     initial = config.jaxtyping_disable
-    config.update("jaxtyping_disable", True)  # noqa: FBT003
+    config.update("jaxtyping_disable", True)
     yield
     config.update("jaxtyping_disable", initial)
 
