@@ -170,7 +170,7 @@ def eval_libero(args: Args) -> None:
                     action = action_plan.popleft()
 
                     # Execute action in environment
-                    obs, reward, done, info = env.step(action.tolist())
+                    obs, _reward, done, _info = env.step(action.tolist())
                     if done:
                         task_successes += 1
                         total_successes += 1
@@ -186,7 +186,7 @@ def eval_libero(args: Args) -> None:
 
             # Save a replay video of the episode
             suffix = "success" if done else "failure"
-            task_segment = task_description.replace(" ", "_")
+            task_description.replace(" ", "_")
             if suffix == "failure":
                 imageio.mimwrite(
                     video_out_path_per_task_failure / f"rollout_{task_id}_{episode_idx}.mp4",

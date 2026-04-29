@@ -12,8 +12,7 @@ from openpi.models import model as _model
 
 def quat2euler(quat, is_degree=False):
     r = R.from_quat([quat[1], quat[2], quat[3], quat[0]])
-    euler_angles = r.as_euler("xyz", degrees=is_degree)
-    return euler_angles
+    return r.as_euler("xyz", degrees=is_degree)
 
 
 def make_libero_example() -> dict:

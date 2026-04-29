@@ -118,7 +118,7 @@ class Go1ACOTInputs(transforms.DataTransformFn):
 
     def __call__(self, data: dict) -> dict:
         if len(data["state"]) == 190:
-            indices = list(range(54, 68)) + [0, 1]
+            indices = [*list(range(54, 68)), 0, 1]
             data["state"] = data["state"][indices]
         state = transforms.pad_to_dim(data["state"], self.action_dim)
 

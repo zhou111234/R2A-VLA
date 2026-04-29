@@ -43,10 +43,8 @@ def create_torch_dataloader(
     # dataset = _data_loader.SafeDataset(dataset)
     if max_frames is not None and max_frames < len(dataset):
         num_batches = max_frames // batch_size
-        shuffle = True
     else:
         num_batches = len(dataset) // batch_size
-        shuffle = False
 
     data_loader = _data_loader.TorchDataLoader(
         dataset,

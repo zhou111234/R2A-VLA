@@ -90,7 +90,7 @@ def init_train_state(
     state_sharding = sharding.fsdp_sharding(train_state_shape, mesh, log=True)
 
     partial_params = load_weights_and_validate(config.weight_loader, train_state_shape.params.to_pure_dict())
-    replicated_sharding = jax.sharding.NamedSharding(mesh, jax.sharding.PartitionSpec())
+    jax.sharding.NamedSharding(mesh, jax.sharding.PartitionSpec())
 
     train_state = init(init_rng, partial_params)
 
@@ -129,7 +129,7 @@ def main():
     mesh = sharding.make_mesh(config.fsdp_devices)
 
     logging.info("Step 1/3: Initializing model & loading pretrained weights...")
-    train_state, state_sharding = init_train_state(config, init_rng, mesh)
+    train_state, _state_sharding = init_train_state(config, init_rng, mesh)
     jax.block_until_ready(train_state)
     num_params = training_utils.count_parameters(train_state.params)
     logging.info(f"Total parameters: {num_params:,}")
@@ -142,7 +142,7 @@ def main():
     save_dir = ckpt_base / "model_init"
     os.makedirs(save_dir, exist_ok=True)
 
-    save_args = jax.tree.map(lambda x: ocp.args.StandardSave(x), train_state)
+    save_args = jax.tree.map(ocp.args.StandardSave, train_state)
     checkpointer.save(save_dir, train_state, save_args=save_args, force=True)
     logging.info(f"Checkpoint saved to: {save_dir}")
     logging.info("Save PASSED ✅")

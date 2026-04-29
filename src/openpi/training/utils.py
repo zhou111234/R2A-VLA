@@ -42,5 +42,4 @@ def array_tree_to_info(tree: at.PyTree) -> str:
 def count_parameters(params):
     """Count total number of parameters in a JAX PyTree."""
     leaves, _ = jax.tree_util.tree_flatten(params)
-    total = sum(x.size for x in leaves if isinstance(x, jnp.ndarray))
-    return total
+    return sum(x.size for x in leaves if isinstance(x, jnp.ndarray))

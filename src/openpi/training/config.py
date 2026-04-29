@@ -232,7 +232,7 @@ class DataConfigFactory(abc.ABC):
 
             agg = {}
 
-            for key in all_norm_stats[0].keys():
+            for key in all_norm_stats[0]:
                 from openpi.shared.normalize import NormStats
 
                 agg[key] = NormStats(
@@ -242,12 +242,11 @@ class DataConfigFactory(abc.ABC):
                     q99=np.mean([norm_stats[key].q99 for norm_stats in all_norm_stats], axis=0),
                 )
 
-            norm_stats = agg
+            return agg
 
             # data_assets_dir = str(assets_dir / asset_id)
             # norm_stats = _normalize.load(_download.maybe_download(data_assets_dir))
             # logging.info(f"Loaded norm stats from {data_assets_dir}")
-            return norm_stats
         except FileNotFoundError:
             logging.info(f"Norm stats not found in {data_assets_dir}, skipping.")
         return None
@@ -1326,7 +1325,7 @@ class TrainConfig:
         """Get the checkpoint directory for this config."""
         if not self.exp_name:
             raise ValueError("--exp_name must be set")
-        if os.getenv("DEBUG_MODE", default=False) != "true":
+        if os.getenv("DEBUG_MODE", default="false") != "true":
             return (pathlib.Path(self.checkpoint_base_dir) / self.name / self.exp_name).resolve()
         return (pathlib.Path(self.checkpoint_base_dir) / self.name / "debug").resolve()
 
@@ -1713,9 +1712,9 @@ _CONFIGS = [
         ema_decay=0.999,
         weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=51_000,
-        save_interval=10000 if os.getenv("DEBUG_MODE", default=False) != "true" else 1000,
-        num_workers=48 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
-        batch_size=128 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
+        save_interval=10000 if os.getenv("DEBUG_MODE", default="false") != "true" else 1000,
+        num_workers=48 if os.getenv("DEBUG_MODE", default="false") != "true" else 1,
+        batch_size=128 if os.getenv("DEBUG_MODE", default="false") != "true" else 1,
         freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
             freeze_vision=False, freeze_llm=True, freeze_dual_ae=[False, False]
         ),
@@ -1762,9 +1761,9 @@ _CONFIGS = [
         ema_decay=0.999,
         weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=61_000,
-        save_interval=10000 if os.getenv("DEBUG_MODE", default=False) != "true" else 1000,
-        num_workers=48 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
-        batch_size=128 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
+        save_interval=10000 if os.getenv("DEBUG_MODE", default="false") != "true" else 1000,
+        num_workers=48 if os.getenv("DEBUG_MODE", default="false") != "true" else 1,
+        batch_size=128 if os.getenv("DEBUG_MODE", default="false") != "true" else 1,
         freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
             freeze_vision=False, freeze_llm=True, freeze_llm_embedder=False, freeze_dual_ae=[False, False]
         ),
@@ -1799,9 +1798,9 @@ _CONFIGS = [
         ema_decay=0.999,
         weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=101_000,
-        save_interval=20000 if os.getenv("DEBUG_MODE", default=False) != "true" else 1000,
-        num_workers=48 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
-        batch_size=128 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
+        save_interval=20000 if os.getenv("DEBUG_MODE", default="false") != "true" else 1000,
+        num_workers=48 if os.getenv("DEBUG_MODE", default="false") != "true" else 1,
+        batch_size=128 if os.getenv("DEBUG_MODE", default="false") != "true" else 1,
         freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
             freeze_vision=False, freeze_llm=True, freeze_dual_ae=[False, False]
         ),
@@ -1852,9 +1851,9 @@ _CONFIGS = [
         ema_decay=0.999,
         weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=51_000,
-        save_interval=10000 if os.getenv("DEBUG_MODE", default=False) != "true" else 1000,
-        num_workers=48 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
-        batch_size=128 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
+        save_interval=10000 if os.getenv("DEBUG_MODE", default="false") != "true" else 1000,
+        num_workers=48 if os.getenv("DEBUG_MODE", default="false") != "true" else 1,
+        batch_size=128 if os.getenv("DEBUG_MODE", default="false") != "true" else 1,
         freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
             freeze_vision=False, freeze_llm=True, freeze_dual_ae=[False, False]
         ),
@@ -1887,9 +1886,9 @@ _CONFIGS = [
         ema_decay=0.999,
         weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=51_000,
-        save_interval=10000 if os.getenv("DEBUG_MODE", default=False) != "true" else 1000,
-        num_workers=48 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
-        batch_size=128 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
+        save_interval=10000 if os.getenv("DEBUG_MODE", default="false") != "true" else 1000,
+        num_workers=48 if os.getenv("DEBUG_MODE", default="false") != "true" else 1,
+        batch_size=128 if os.getenv("DEBUG_MODE", default="false") != "true" else 1,
         freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
             freeze_vision=False, freeze_llm=True, freeze_llm_embedder=False, freeze_dual_ae=[False, False]
         ),
@@ -1922,9 +1921,9 @@ _CONFIGS = [
         ema_decay=0.999,
         weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=240_000,
-        save_interval=30000 if os.getenv("DEBUG_MODE", default=False) != "true" else 1000,
-        num_workers=48 if os.getenv("DEBUG_MODE", default=False) != "true" else 48,
-        batch_size=128 if os.getenv("DEBUG_MODE", default=False) != "true" else 128,
+        save_interval=30000 if os.getenv("DEBUG_MODE", default="false") != "true" else 1000,
+        num_workers=48 if os.getenv("DEBUG_MODE", default="false") != "true" else 48,
+        batch_size=128 if os.getenv("DEBUG_MODE", default="false") != "true" else 128,
         freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
             freeze_vision=False, freeze_llm=True, freeze_llm_embedder=False, freeze_dual_ae=[False, False]
         ),
@@ -1975,9 +1974,9 @@ _CONFIGS = [
         ema_decay=0.999,
         weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=51_000,
-        save_interval=10000 if os.getenv("DEBUG_MODE", default=False) != "true" else 200,
-        num_workers=48 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
-        batch_size=128 if os.getenv("DEBUG_MODE", default=False) != "true" else 16,
+        save_interval=10000 if os.getenv("DEBUG_MODE", default="false") != "true" else 200,
+        num_workers=48 if os.getenv("DEBUG_MODE", default="false") != "true" else 1,
+        batch_size=128 if os.getenv("DEBUG_MODE", default="false") != "true" else 16,
         freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
             freeze_vision=False, freeze_llm=True, freeze_dual_ae=[False, False]
         ),
@@ -2099,9 +2098,9 @@ _CONFIGS = [
         ema_decay=0.999,
         weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=50_000,
-        save_interval=5000 if os.getenv("DEBUG_MODE", default=False) != "true" else 200,
-        num_workers=24 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
-        batch_size=256 if os.getenv("DEBUG_MODE", default=False) != "true" else 16,
+        save_interval=5000 if os.getenv("DEBUG_MODE", default="false") != "true" else 200,
+        num_workers=24 if os.getenv("DEBUG_MODE", default="false") != "true" else 1,
+        batch_size=256 if os.getenv("DEBUG_MODE", default="false") != "true" else 16,
         # You can select to freeze certain parts of the model during training by setting the corresponding flags to True
         freeze_filter=acot_vla.ACOTConfig(paligemma_variant="gemma_2b_lora").get_freeze_filter(
             freeze_vision=False, freeze_llm=True, freeze_llm_embedder=True, freeze_dual_ae=[False, False]

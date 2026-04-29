@@ -77,9 +77,9 @@ class R2ATemporalInputs(transforms.DataTransformFn):
         state_len = len(data["state"])
         state_indices = None
         if state_len == 183:
-            state_indices = list(range(54, 68)) + [0, 1] + list(range(99, 104))
+            state_indices = [*list(range(54, 68)), 0, 1, *list(range(99, 104))]
         elif state_len == 159:
-            state_indices = list(range(30, 44)) + [0, 1] + list(range(75, 80))
+            state_indices = [*list(range(30, 44)), 0, 1, *list(range(75, 80))]
         if state_indices is not None:
             data["state"] = data["state"][state_indices]
         if "actions" in data and data["actions"].shape[1] == 40:
@@ -212,5 +212,4 @@ class TemporalBufferedPolicy:
             self._buffer.reset()
             self._last_task_name = current_task
         obs = self._buffer.update(obs)
-        result = self._inner.infer(obs)
-        return result
+        return self._inner.infer(obs)

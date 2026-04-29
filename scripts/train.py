@@ -337,10 +337,7 @@ def main(config: _config.TrainConfig):
     if resuming:
         train_state = _checkpoints.restore_state(checkpoint_manager, train_state, data_loader)
 
-    if (
-        config.model.model_type == _model.ModelType.ACOT_VLA_PI05
-        or config.model.model_type == _model.ModelType.ACOT_VLA_PI0
-    ):
+    if config.model.model_type in (_model.ModelType.ACOT_VLA_PI05, _model.ModelType.ACOT_VLA_PI0):
         ptrain_step = jax.jit(
             functools.partial(acot_train_step, config),
             in_shardings=(replicated_sharding, train_state_sharding, data_sharding),

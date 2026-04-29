@@ -48,9 +48,8 @@ def sample_subtask(dataset):
                 instruction = subtask["instruction"].lower()
                 is_reset = any(k in instruction for k in ["reset", "return", "default"])
 
-                if is_reset:
-                    if local_end - local_start > 90:
-                        local_end = local_start + 45
+                if is_reset and local_end - local_start > 90:
+                    local_end = local_start + 45
 
                 global_start = local_start + current_global_offset
                 global_end = local_end + current_global_offset
@@ -102,7 +101,7 @@ class FrameSampler(torch.utils.data.Sampler):
             self.valid_indices.extend(range(start_idx, end_idx + 1))
 
         # Remove duplicates and sort
-        self.valid_indices = sorted(list(set(self.valid_indices)))
+        self.valid_indices = sorted(set(self.valid_indices))
         print(f"Total {len(self.valid_indices)} valid indices,", "original:", dataset_size)
 
         random.shuffle(self.valid_indices)

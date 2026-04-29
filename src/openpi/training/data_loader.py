@@ -172,10 +172,7 @@ def create_torch_dataset(data_config: _config.DataConfig, model_config: _model.B
     if repo_id == "fake":
         return FakeDataset(model_config, num_samples=1024)
 
-    if (
-        model_config.model_type == _model.ModelType.ACOT_VLA_PI0
-        or model_config.model_type == _model.ModelType.ACOT_VLA_PI05
-    ):
+    if model_config.model_type in (_model.ModelType.ACOT_VLA_PI0, _model.ModelType.ACOT_VLA_PI05):
         acot_action_horizons = jnp.array((model_config.coarse_action_horizon, model_config.action_horizon))
         joint_action_shifts = jnp.array(data_config.joint_action_shifts)
         action_chunk_size = max(acot_action_horizons * joint_action_shifts).item()
@@ -388,10 +385,7 @@ def create_torch_data_loader(
         sampler=sampler,
     )
 
-    if (
-        model_config.model_type == _model.ModelType.ACOT_VLA_PI0
-        or model_config.model_type == _model.ModelType.ACOT_VLA_PI05
-    ):
+    if model_config.model_type in (_model.ModelType.ACOT_VLA_PI0, _model.ModelType.ACOT_VLA_PI05):
         return DataLoaderACOTImpl(data_config, data_loader)
     return DataLoaderImpl(data_config, data_loader)
 

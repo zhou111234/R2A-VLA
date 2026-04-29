@@ -105,7 +105,7 @@ def _align_param(expected, loaded, init_method):
     if expected.shape == loaded.shape:
         return loaded.astype(expected.dtype)
 
-    min_shape = tuple(min(e, l) for e, l in zip(expected.shape, loaded.shape))
+    min_shape = tuple(min(e, loaded_dim) for e, loaded_dim in zip(expected.shape, loaded.shape, strict=False))
     slices = tuple(slice(0, m) for m in min_shape)
 
     if init_method == "zeros":
@@ -141,18 +141,17 @@ def _merge_params(loaded_params: at.Params, params: at.Params, *, missing_regex:
         cloned_path_source = re.sub(r"(\w+)\_(\d+)", r"\g<1>_1", key_path, count=1)
         k_source = tuple(cloned_path_source.split("/"))
 
-        if cloned_path_source != key_path:
-            if k_source in flat_loaded:
-                loaded_param_source = flat_loaded[k_source]
+        if cloned_path_source != key_path and k_source in flat_loaded:
+            loaded_param_source = flat_loaded[k_source]
 
-                if expected_param.shape == loaded_param_source.shape:
-                    result[k] = loaded_param_source.astype(expected_param.dtype)
-                    print(f"[INFO] Cloned missing param {key_path} from {cloned_path_source} {expected_param.shape}")
-                    cloned = True
-                else:
-                    print(
-                        f"[WARN] Clone attempt failed for {key_path}: source shape {loaded_param_source.shape} != target shape {expected_param.shape}"
-                    )
+            if expected_param.shape == loaded_param_source.shape:
+                result[k] = loaded_param_source.astype(expected_param.dtype)
+                print(f"[INFO] Cloned missing param {key_path} from {cloned_path_source} {expected_param.shape}")
+                cloned = True
+            else:
+                print(
+                    f"[WARN] Clone attempt failed for {key_path}: source shape {loaded_param_source.shape} != target shape {expected_param.shape}"
+                )
 
         if not cloned:
             if init == "zeros":

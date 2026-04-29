@@ -109,10 +109,10 @@ class Go2ACOTInputs(transforms.DataTransformFn):
         # Slice the state and action to the expected dimensions based on the original data shape
         state_indices = None
         if len(data["state"]) == 183:
-            state_indices = list(range(54, 68)) + [0, 1] + list(range(99, 104))
+            state_indices = [*list(range(54, 68)), 0, 1, *list(range(99, 104))]
 
         if len(data["state"]) == 159:
-            state_indices = list(range(30, 44)) + [0, 1] + list(range(75, 80))
+            state_indices = [*list(range(30, 44)), 0, 1, *list(range(75, 80))]
         if state_indices is not None:
             data["state"] = data["state"][state_indices]
 

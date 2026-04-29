@@ -81,8 +81,7 @@ def init_train_state(config: _config.TrainConfig, init_rng: at.KeyArrayLike, mes
 
     train_state_shape = jax.eval_shape(init, init_rng)
     partial_params = load_weights_and_validate(config.weight_loader, train_state_shape.params.to_pure_dict())
-    train_state = init(init_rng, partial_params)
-    return train_state
+    return init(init_rng, partial_params)
 
 
 def make_fake_batch(config: _config.TrainConfig):

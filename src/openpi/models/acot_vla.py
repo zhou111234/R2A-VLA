@@ -103,7 +103,7 @@ class LearnableQueryExtractor(nnx.Module):
         K, V: (B, L, T, D)
         Returns: (B, L, D)
         """
-        B, L, T, D = K.shape
+        B, L, T, _D = K.shape
         outputs = []
         for l in range(L):
             g = l // self.group_size
@@ -170,7 +170,7 @@ class AttentionPoolingExtractor(nnx.Module):
         ]
 
     def __call__(self, K: jax.Array, V: jax.Array) -> jax.Array:
-        B, L, T, D = K.shape
+        B, L, T, _D = K.shape
         outputs = []
         for l in range(L):
             g = l // self.group_size
@@ -239,7 +239,7 @@ class DownsampleExtractor(nnx.Module):
         K, V: (B, L, T, D)
         Returns: (B, L, output_dim)
         """
-        B, L, T, D = K.shape
+        B, L, T, _D = K.shape
         outputs = []
 
         for l in range(L):
@@ -375,9 +375,11 @@ class ACOTConfig(_model.BaseModelConfig):
         return observation_spec, action_spec
 
     def get_freeze_filter(
-        self, freeze_llm=False, freeze_llm_embedder=True, freeze_vision=False, freeze_dual_ae=[False, False]
+        self, freeze_llm=False, freeze_llm_embedder=True, freeze_vision=False, freeze_dual_ae=None
     ) -> nnx.filterlib.Filter:
-        gemma_params_filter = nnx_utils.PathRegex(".*llm.*")
+        if freeze_dual_ae is None:
+            freeze_dual_ae = [False, False]
+        nnx_utils.PathRegex(".*llm.*")
         paligemma_base_filter = nnx_utils.PathRegex(".*llm(?!.*_1|.*_2).*")
         coarse_action_expert_params_filter = nnx_utils.PathRegex(".*llm.*_1.*")
         action_expert_params_filter = nnx_utils.PathRegex(".*llm.*_2.*")
@@ -802,7 +804,7 @@ class ACOT_VLA(_model.BaseModel):
             attn_mask = make_attn_mask(input_mask, ar_mask)
             positions = jnp.cumsum(input_mask, axis=1) - 1
 
-            (prefix_ref_action_out, suffix_ref_action_out, _), _ = self.PaliGemma.llm(
+            (_prefix_ref_action_out, suffix_ref_action_out, _), _ = self.PaliGemma.llm(
                 [prefix_tokens, suffix_ref_action_tokens, None],
                 mask=attn_mask,
                 positions=positions,
@@ -838,7 +840,7 @@ class ACOT_VLA(_model.BaseModel):
         attn_mask = make_attn_mask(input_mask, ar_mask)
         positions = jnp.cumsum(input_mask, axis=1) - 1
 
-        (prefix_expert_out, _, suffix_expert_out), _ = self.PaliGemma.llm(
+        (_prefix_expert_out, _, suffix_expert_out), _ = self.PaliGemma.llm(
             [prefix_tokens, None, suffix_expert_tokens],
             mask=attn_mask,
             positions=positions,
@@ -907,7 +909,7 @@ class ACOT_VLA(_model.BaseModel):
             )
             positions = jnp.sum(prefix_mask, axis=-1)[:, None] + jnp.cumsum(suffix_mask, axis=-1) - 1
 
-            (prefix_out, suffix_out, _), _ = self.PaliGemma.llm(
+            (_prefix_out, suffix_out, _), _ = self.PaliGemma.llm(
                 [None, suffix_tokens, None],
                 mask=full_attn_mask,
                 positions=positions,
@@ -919,7 +921,7 @@ class ACOT_VLA(_model.BaseModel):
             return x_t + dt * v_t, time + dt, step_idx + 1
 
         def cond_explicit_action_reasoner(carry):
-            x_t, time, _ = carry
+            _x_t, time, _ = carry
             return time >= -dt / 2
 
         if self.adopt_explicit_action_reasoner:
@@ -950,7 +952,7 @@ class ACOT_VLA(_model.BaseModel):
             )
             positions = jnp.sum(prefix_mask, axis=-1)[:, None] + jnp.cumsum(suffix_mask, axis=-1) - 1
 
-            (prefix_out, _, suffix_out), _ = self.PaliGemma.llm(
+            (_prefix_out, _, suffix_out), _ = self.PaliGemma.llm(
                 [None, None, suffix_tokens],
                 mask=full_attn_mask,
                 positions=positions,
@@ -961,7 +963,7 @@ class ACOT_VLA(_model.BaseModel):
             return x_t + dt * v_t, time + dt, step_idx + 1
 
         def cond_expert(carry):
-            x_t, time, _ = carry
+            _x_t, time, _ = carry
             return time >= -dt / 2
 
         x_0_expert, _, _ = jax.lax.while_loop(cond_expert, step_expert, (expert_action_noise, 1.0, 1))

@@ -87,8 +87,7 @@ def init_train_state(config: _config.TrainConfig, init_rng: at.KeyArrayLike, mes
 
     train_state_shape = jax.eval_shape(init, init_rng)
     partial_params = load_weights_and_validate(config.weight_loader, train_state_shape.params.to_pure_dict())
-    train_state = init(init_rng, partial_params)
-    return train_state
+    return init(init_rng, partial_params)
 
 
 def make_fake_batch(model_config, bs=1):
@@ -230,7 +229,7 @@ def main():
         if step > start_step and step % config.save_interval == 0:
             save_dir = (ckpt_base / f"step_{step}").resolve()
             os.makedirs(save_dir, exist_ok=True)
-            save_args = jax.tree.map(lambda x: ocp.args.StandardSave(x), train_state)
+            save_args = jax.tree.map(ocp.args.StandardSave, train_state)
             t_save = time.time()
             checkpointer.save(save_dir, train_state, save_args=save_args, force=True)
             jax.block_until_ready(train_state)
@@ -260,7 +259,7 @@ def main():
 
         # Test 1: metadata only (fast, no data transfer)
         t_meta = time.time()
-        meta = checkpointer.metadata(last_ckpt_dir)
+        checkpointer.metadata(last_ckpt_dir)
         meta_time = time.time() - t_meta
         logging.info(f"  Metadata read: {meta_time:.3f}s")
 

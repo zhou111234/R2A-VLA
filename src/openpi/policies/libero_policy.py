@@ -157,5 +157,4 @@ class LiberoACOTInputs(transforms.DataTransformFn):
 class LiberoACOTOutputs(transforms.DataTransformFn):
     def __call__(self, data: dict) -> dict:
         keys = ["coarse_actions", "actions"]
-        ret_result = {key: np.asarray(data[key][:, :7]) for key in keys if key in data}
-        return ret_result
+        return {key: np.asarray(data[key][:, :7]) for key in keys if key in data}
