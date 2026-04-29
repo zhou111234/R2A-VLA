@@ -1,4 +1,4 @@
-exclude: third_party/|.*\.Dockerfile$|Dockerfile\..*
+exclude: third_party/|.*\.Dockerfile$|Dockerfile\..*|.*test.*\.py$|test_.*\.py$
 
 repos:
   - repo: https://github.com/astral-sh/uv-pre-commit
@@ -13,6 +13,6 @@ repos:
       # Run the linter.
       - id: ruff
         args: [--fix]
-        exclude: .*\.Dockerfile$|Dockerfile\..*
+        exclude: .*\.Dockerfile$|Dockerfile\..*|.*test.*\.py$|test_.*\.py$
       - id: ruff-format
-        exclude: .*\.Dockerfile$|Dockerfile\..*
+        exclude: .*\.Dockerfile$|Dockerfile\..*|.*test.*\.py$|test_.*\.py$
