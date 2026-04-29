@@ -13,7 +13,6 @@ Key innovations over baseline:
 
 import dataclasses
 import logging
-from typing import Optional
 
 import augmax
 import einops
@@ -23,13 +22,12 @@ import jax
 import jax.numpy as jnp
 from typing_extensions import override
 
-from openpi.models.noise_expert import NoiseExpert, NoiseExpertConfig
-
-import openpi.models.model as _model
-import openpi.models.gemma as _gemma
-import openpi.models.siglip as _siglip
 import openpi.models.acot_vla as _acot_vla
-from openpi.models.pi0 import posemb_sincos, make_attn_mask
+import openpi.models.gemma as _gemma
+import openpi.models.model as _model
+from openpi.models.noise_expert import NoiseExpert
+from openpi.models.noise_expert import NoiseExpertConfig
+from openpi.models.pi0 import make_attn_mask
 from openpi.shared import array_typing as at
 from openpi.shared import image_tools
 import openpi.shared.nnx_utils as nnx_utils
@@ -303,7 +301,7 @@ class ACOT_VLA_MyModal(_acot_vla.ACOT_VLA):
             if image.ndim == 5:
                 B, T, H, W, C = image.shape
                 flat = image.reshape(B * T, H, W, C)
-                if (H, W) != image_resolution:
+                if image_resolution != (H, W):
                     flat = image_tools.resize_with_pad(flat, *image_resolution)
                 if train and rng is not None:
                     flat = flat / 2.0 + 0.5
@@ -368,7 +366,6 @@ class ACOT_VLA_MyModal(_acot_vla.ACOT_VLA):
         *,
         train: bool = False,
     ) -> at.Float[at.Array, "*b ah"]:
-
         preprocess_rng, time_rng, coarse_noise_rng, expert_noise_rng = jax.random.split(rng, 4)
 
         if self.mymodal_config.num_history_frames > 1:
@@ -456,9 +453,8 @@ class ACOT_VLA_MyModal(_acot_vla.ACOT_VLA):
             v_ref = self.coarse_action_out_proj(suf_ref_out[:, -self.coarse_action_horizon :])
             v_exp = self.action_out_proj(suf_exp_out[:, -self.action_horizon :])
             return jnp.mean(jnp.square(u_ref_t - v_ref)) + jnp.mean(jnp.square(u_expert_t - v_exp))
-        else:
-            v_exp = self.action_out_proj(suf_exp_out[:, -self.action_horizon :])
-            return jnp.mean(jnp.square(u_expert_t - v_exp))
+        v_exp = self.action_out_proj(suf_exp_out[:, -self.action_horizon :])
+        return jnp.mean(jnp.square(u_expert_t - v_exp))
 
     # ------------------------------------------------------------------
     # Override sample_actions – use noise expert for initial distribution
@@ -471,7 +467,6 @@ class ACOT_VLA_MyModal(_acot_vla.ACOT_VLA):
         *,
         num_steps: int | at.Int[at.Array, ""] = 10,
     ) -> _model.Actions:
-
         if self.mymodal_config.num_history_frames > 1:
             observation = self._preprocess_obs(None, observation, train=False)
         else:

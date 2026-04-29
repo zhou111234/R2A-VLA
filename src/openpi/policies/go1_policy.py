@@ -1,13 +1,13 @@
 """Policy transforms for the Go1 robot."""
 
+from collections.abc import Sequence
+import copy
 import dataclasses
 from typing import ClassVar
-from collections.abc import Sequence
+
 import numpy as np
 import torch
-import copy
 
-import openpi.models.model as _model
 import openpi.transforms as transforms
 
 
@@ -31,14 +31,9 @@ class Go1Inputs(transforms.DataTransformFn):
     # replaced with black images and the corresponding `image_mask` will be set to False.
     EXPECTED_CAMERAS: ClassVar[tuple[str, ...]] = ("top_head", "hand_left", "hand_right")
 
-    rename_map = {
-        "top_head": "base_0_rgb",
-        "hand_left": "left_wrist_0_rgb",
-        "hand_right": "right_wrist_0_rgb"
-    }
+    rename_map = {"top_head": "base_0_rgb", "hand_left": "left_wrist_0_rgb", "hand_right": "right_wrist_0_rgb"}
 
     def __call__(self, data: dict) -> dict:
-
         # Pad the proprioceptive input to the action dimension of the model
         state = transforms.pad_to_dim(data["state"], self.action_dim)
         state = copy.deepcopy(state)
@@ -69,7 +64,6 @@ class Go1Inputs(transforms.DataTransformFn):
         # Create image mask based on available cameras
         image_mask = {self.rename_map[camera]: np.True_ for camera in self.EXPECTED_CAMERAS}
 
-
         # Prepare inputs dictionary
         inputs = {
             "image": images,
@@ -81,7 +75,7 @@ class Go1Inputs(transforms.DataTransformFn):
         if "actions" in data:
             actions = data["actions"]
             if self.action_mask is not None:
-                actions[:, self.action_mask[:actions.shape[1]]] = 0
+                actions[:, self.action_mask[: actions.shape[1]]] = 0
             actions = transforms.pad_to_dim(actions, self.action_dim)
             inputs["actions"] = actions.squeeze()
 
@@ -97,7 +91,7 @@ class Go1Outputs(transforms.DataTransformFn):
     """Outputs for the Go1 policy."""
 
     def __call__(self, data: dict) -> dict:
-        return {"actions": np.asarray(data["actions"][:, :22])} 
+        return {"actions": np.asarray(data["actions"][:, :22])}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -119,11 +113,7 @@ class Go1ACOTInputs(transforms.DataTransformFn):
     # replaced with black images and the corresponding `image_mask` will be set to False.
     EXPECTED_CAMERAS: ClassVar[tuple[str, ...]] = ("top_head", "hand_left", "hand_right")
 
-    rename_map = {
-        "top_head": "base_0_rgb",
-        "hand_left": "left_wrist_0_rgb",
-        "hand_right": "right_wrist_0_rgb"
-    }
+    rename_map = {"top_head": "base_0_rgb", "hand_left": "left_wrist_0_rgb", "hand_right": "right_wrist_0_rgb"}
     acot_action_generation: Sequence[Sequence[int]] | None = None
 
     def __call__(self, data: dict) -> dict:
@@ -158,14 +148,12 @@ class Go1ACOTInputs(transforms.DataTransformFn):
         # Create image mask based on available cameras
         image_mask = {self.rename_map[camera]: np.True_ for camera in self.EXPECTED_CAMERAS}
 
-
         # Prepare inputs dictionary
         inputs = {
             "image": images,
             "image_mask": image_mask,
             "state": state,
         }
-
 
         if self.acot_action_generation is not None and "actions" in data:
             action_horizons = self.acot_action_generation[0]
@@ -179,13 +167,13 @@ class Go1ACOTInputs(transforms.DataTransformFn):
                 required_length = (action_horizon - 1) * joint_action_shift + 1
                 data[key] = copy.deepcopy(raw_data[:required_length:joint_action_shift])
                 assert len(data[key]) == action_horizon
-        
-        for key in ['coarse_actions', 'actions']:
+
+        for key in ["coarse_actions", "actions"]:
             if key in data:
                 if data[key].shape[1] == 36:
                     data[key] = np.column_stack((data[key][:, 16:30], data[key][:, 0], data[key][:, 1]))
                 if self.action_mask is not None:
-                    data[key][:, self.action_mask[:data[key].shape[1]]] = 0
+                    data[key][:, self.action_mask[: data[key].shape[1]]] = 0
                 data[key] = transforms.pad_to_dim(data[key], self.action_dim)
                 inputs[key] = data[key]
 
@@ -200,5 +188,5 @@ class Go1ACOTOutputs(transforms.DataTransformFn):
     """Outputs for the Go1 policy."""
 
     def __call__(self, data: dict) -> dict:
-        keys = ['coarse_actions', 'actions']
+        keys = ["coarse_actions", "actions"]
         return {key: np.asarray(data[key][:, :16]) for key in keys if key in data}

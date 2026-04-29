@@ -2,12 +2,10 @@ from collections.abc import Callable, Mapping, Sequence
 import dataclasses
 import re
 from typing import Protocol, TypeAlias, TypeVar, runtime_checkable
-import torch
+
 import flax.traverse_util as traverse_util
 import jax
 import numpy as np
-from PIL import Image
-import torchvision
 from openpi_client import image_tools
 
 from openpi.models import tokenizer as _tokenizer
@@ -199,8 +197,11 @@ class ResizeImages(DataTransformFn):
         return array_like
 
     def __call__(self, data: DataDict) -> DataDict:
-        data[self.key] = {k: image_tools.resize_with_pad(self.to_numpy(v), self.height, self.width) for k, v in data[self.key].items()}
+        data[self.key] = {
+            k: image_tools.resize_with_pad(self.to_numpy(v), self.height, self.width) for k, v in data[self.key].items()
+        }
         return data
+
 
 @dataclasses.dataclass(frozen=True)
 class SubsampleActions(DataTransformFn):
@@ -254,6 +255,7 @@ class AbsoluteActions(DataTransformFn):
 
         return data
 
+
 @dataclasses.dataclass(frozen=True)
 class ACOTDeltaActions(DataTransformFn):
     """Repacks absolute actions into delta action space."""
@@ -292,6 +294,7 @@ class ACOTAbsoluteActions(DataTransformFn):
                 actions[..., :dims] += np.expand_dims(np.where(mask, state[..., :dims], 0), axis=-2)
                 data[key] = actions
         return data
+
 
 @dataclasses.dataclass(frozen=True)
 class TokenizePrompt(DataTransformFn):
@@ -372,6 +375,7 @@ class PromptFromLeRobotTask(DataTransformFn):
 
         return {**data, "prompt": prompt}
 
+
 @dataclasses.dataclass(frozen=True)
 class PromptFromHighlevelInstruction(DataTransformFn):
     """Extracts a prompt from the current LeRobot dataset task."""
@@ -388,18 +392,19 @@ class PromptFromHighlevelInstruction(DataTransformFn):
         segments = self.instruction_segments.get(str(episode_index))
 
         segment_id = len(segments) - 1
-        segments[0]['start_frame_index'] = 0
+        segments[0]["start_frame_index"] = 0
         for i, segment in enumerate(segments):
-            if frame_index >= segment['start_frame_index'] and frame_index < segment['end_frame_index']:
+            if frame_index >= segment["start_frame_index"] and frame_index < segment["end_frame_index"]:
                 segment_id = i
                 break
-        
+
         if segment_id is not None:
             segment = segments[segment_id]
-            instruction = segment['instruction']
+            instruction = segment["instruction"]
         else:
             raise ValueError(f"No segment found for episode {episode_index} and frame {frame_index}")
         return {**data, "prompt": instruction}
+
 
 @dataclasses.dataclass(frozen=True)
 class PadStatesAndActions(DataTransformFn):
@@ -412,6 +417,7 @@ class PadStatesAndActions(DataTransformFn):
         if "actions" in data:
             data["actions"] = pad_to_dim(data["actions"], self.model_action_dim, axis=-1)
         return data
+
 
 @dataclasses.dataclass(frozen=True)
 class ACOTPadStatesAndActions(DataTransformFn):
@@ -426,6 +432,7 @@ class ACOTPadStatesAndActions(DataTransformFn):
             if key in data:
                 data[key] = pad_to_dim(data[key], self.model_action_dim, axis=-1)
         return data
+
 
 def flatten_dict(tree: at.PyTree) -> dict:
     """Flatten a nested dictionary. Uses '/' as the separator."""

@@ -29,10 +29,7 @@ class TemporalFrameBuffer:
     def __init__(self, num_history_frames: int = 4, camera_keys=None):
         self.T = num_history_frames
         self.camera_keys = camera_keys or ["base_0_rgb", "left_wrist_0_rgb", "right_wrist_0_rgb"]
-        self._buffers: dict[str, collections.deque] = {
-            k: collections.deque(maxlen=self.T)
-            for k in self.camera_keys
-        }
+        self._buffers: dict[str, collections.deque] = {k: collections.deque(maxlen=self.T) for k in self.camera_keys}
         self._episode_id: Any = None
 
     def reset(self, episode_id: Any = None):

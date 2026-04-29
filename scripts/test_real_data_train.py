@@ -9,19 +9,18 @@ Usage:
 """
 
 import dataclasses
+import functools
 import logging
 import os
-import pathlib
 import sys
 import time
 
 import flax.nnx as nnx
+import flax.traverse_util as traverse_util
 import jax
 import jax.numpy as jnp
 import optax
-import functools
 
-import openpi.models.model as _model
 import openpi.shared.array_typing as at
 import openpi.shared.nnx_utils as nnx_utils
 import openpi.training.config as _config
@@ -29,8 +28,6 @@ import openpi.training.data_loader as _data_loader
 import openpi.training.optimizer as _optimizer
 import openpi.training.sharding as sharding
 import openpi.training.utils as training_utils
-import openpi.training.weight_loaders as _weight_loaders
-import flax.traverse_util as traverse_util
 
 
 def init_logging():
@@ -142,7 +139,7 @@ def main():
     if hasattr(_dc, "repo_id"):
         object.__setattr__(_dc, "repo_id", [target_repo])
     else:
-        logging.error(f"Cannot find repo_id in config data chain")
+        logging.error("Cannot find repo_id in config data chain")
         sys.exit(1)
     object.__setattr__(test_config, "batch_size", min(config.batch_size, 4))
     object.__setattr__(test_config, "num_workers", 0)
@@ -188,9 +185,10 @@ def main():
             # so we must use the same structure for EMA update.
             # Skip PRNG keys and other non-numeric types in EMA.
             def _ema_update(old, new):
-                if hasattr(old, 'dtype') and jax.numpy.issubdtype(old.dtype, jax.numpy.floating):
+                if hasattr(old, "dtype") and jax.numpy.issubdtype(old.dtype, jax.numpy.floating):
                     return state.ema_decay * old + (1 - state.ema_decay) * new
                 return new
+
             new_state = dataclasses.replace(
                 new_state,
                 ema_params=jax.tree.map(_ema_update, state.ema_params, new_params_full),

@@ -1,8 +1,10 @@
-import dataclasses
+from collections.abc import Sequence
 import copy
+import dataclasses
+
 import einops
 import numpy as np
-from collections.abc import Sequence
+
 from openpi import transforms
 from openpi.models import model as _model
 
@@ -99,13 +101,13 @@ class LiberoOutputs(transforms.DataTransformFn):
         # For your own dataset, replace `7` with the action dimension of your dataset.
         return {"actions": np.asarray(data["actions"][:, :7])}
 
+
 @dataclasses.dataclass(frozen=True)
 class LiberoACOTInputs(transforms.DataTransformFn):
-
     model_type: _model.ModelType
     acot_action_generation: Sequence[Sequence[int]] | None = None
-    def __call__(self, data: dict) -> dict:
 
+    def __call__(self, data: dict) -> dict:
         base_image = _parse_image(data["observation/image"])
         wrist_image = _parse_image(data["observation/wrist_image"])
 
@@ -140,8 +142,8 @@ class LiberoACOTInputs(transforms.DataTransformFn):
                 required_length = (action_horizon - 1) * joint_action_shift + 1
                 data[key] = copy.deepcopy(raw_data[:required_length:joint_action_shift])
                 assert len(data[key]) == action_horizon
-        
-        for key in ['coarse_actions', 'actions']:
+
+        for key in ["coarse_actions", "actions"]:
             if key in data:
                 inputs[key] = data[key]
 
@@ -154,6 +156,6 @@ class LiberoACOTInputs(transforms.DataTransformFn):
 @dataclasses.dataclass(frozen=True)
 class LiberoACOTOutputs(transforms.DataTransformFn):
     def __call__(self, data: dict) -> dict:
-        keys = ['coarse_actions', 'actions']
+        keys = ["coarse_actions", "actions"]
         ret_result = {key: np.asarray(data[key][:, :7]) for key in keys if key in data}
         return ret_result

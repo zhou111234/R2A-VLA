@@ -1,12 +1,13 @@
 """Policy transforms for the ARX robot."""
 
+from collections.abc import Sequence
+import copy
 import dataclasses
 from typing import ClassVar
 
 import numpy as np
 import torch
-import copy
-from collections.abc import Sequence
+
 import openpi.models.model as _model
 import openpi.transforms as transforms
 
@@ -130,7 +131,6 @@ class ARXACOTInputs(transforms.DataTransformFn):
     }
     acot_action_generation: Sequence[Sequence[int]] | None = None
 
-
     def __call__(self, data: dict) -> dict:
         # Pad the proprioceptive input to the action dimension of the model
         state = transforms.pad_to_dim(data["state"], self.action_dim)
@@ -180,7 +180,7 @@ class ARXACOTInputs(transforms.DataTransformFn):
                 assert len(data[key]) == action_horizon
 
         # Add actions if present
-        for key in ['coarse_actions', 'actions']:
+        for key in ["coarse_actions", "actions"]:
             if key in data:
                 actions = data[key]
                 if self.action_mask is not None:

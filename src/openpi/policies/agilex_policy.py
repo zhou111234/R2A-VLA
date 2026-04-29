@@ -1,16 +1,17 @@
 """Policy transforms for the Agilex robot."""
 
+from collections.abc import Sequence
+import copy
 import dataclasses
 from typing import ClassVar
 
 import numpy as np
 import torch
-import copy
-from collections.abc import Sequence
+
 import openpi.models.model as _model
+from openpi.policies.agilex_fk import batch_qpos_to_eef_pos
 import openpi.transforms as transforms
 
-from openpi.policies.agilex_fk import batch_qpos_to_eef_pos
 
 @dataclasses.dataclass(frozen=True)
 class AgilexInputs(transforms.DataTransformFn):
@@ -32,19 +33,13 @@ class AgilexInputs(transforms.DataTransformFn):
     # replaced with black images and the corresponding `image_mask` will be set to False.
     EXPECTED_CAMERAS: ClassVar[tuple[str, ...]] = ("top_head", "hand_left", "hand_right")
 
-    rename_map = {
-        "top_head": "base_0_rgb",
-        "hand_left": "left_wrist_0_rgb",
-        "hand_right": "right_wrist_0_rgb"
-    }
-    
+    rename_map = {"top_head": "base_0_rgb", "hand_left": "left_wrist_0_rgb", "hand_right": "right_wrist_0_rgb"}
+
     # if set all state to zeros
     mask_state: bool = False
 
     # if convert to eef position
     convert_to_eef_position: bool = False
-
-
 
     def __call__(self, data: dict) -> dict:
         # We only mask padding for pi0 model, not pi0-FAST
@@ -99,9 +94,9 @@ class AgilexInputs(transforms.DataTransformFn):
             if mask_padding:
                 # Create action mask for padding
                 action_mask = np.ones_like(actions, dtype=bool)
-                action_mask[:, self.action_dim:] = False
+                action_mask[:, self.action_dim :] = False
                 inputs["action_mask"] = action_mask
-            
+
             if self.convert_to_eef_position:
                 actions[..., :14] = batch_qpos_to_eef_pos(actions[..., :14])
             inputs["actions"] = actions.squeeze()
@@ -122,7 +117,7 @@ class AgilexOutputs(transforms.DataTransformFn):
 
     def __call__(self, data: dict) -> dict:
         # Return the first 14 dimensions of actions (13 joints + 1 gripper)
-        return {"actions": np.asarray(data["actions"][:, :14])} 
+        return {"actions": np.asarray(data["actions"][:, :14])}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -145,11 +140,7 @@ class AgilexACOTInputs(transforms.DataTransformFn):
     # replaced with black images and the corresponding `image_mask` will be set to False.
     EXPECTED_CAMERAS: ClassVar[tuple[str, ...]] = ("top_head", "hand_left", "hand_right")
 
-    rename_map = {
-        "top_head": "base_0_rgb",
-        "hand_left": "left_wrist_0_rgb",
-        "hand_right": "right_wrist_0_rgb"
-    }
+    rename_map = {"top_head": "base_0_rgb", "hand_left": "left_wrist_0_rgb", "hand_right": "right_wrist_0_rgb"}
 
     # if convert to eef position
     convert_to_eef_position: bool = False
@@ -157,7 +148,6 @@ class AgilexACOTInputs(transforms.DataTransformFn):
     acot_action_generation: Sequence[Sequence[int]] | None = None
 
     def __call__(self, data: dict) -> dict:
-
         # Pad the proprioceptive input to the action dimension of the model
         state = transforms.pad_to_dim(data["state"], self.action_dim)
         # Ensure state has correct shape [batch_size, state_dim]
@@ -209,14 +199,13 @@ class AgilexACOTInputs(transforms.DataTransformFn):
                 data[key] = copy.deepcopy(raw_data[:required_length:joint_action_shift])
                 assert len(data[key]) == action_horizon
 
-
         # Add actions if present
-        for key in ['coarse_actions', 'actions']:
+        for key in ["coarse_actions", "actions"]:
             if key in data:
                 actions = transforms.pad_to_dim(data[key], self.action_dim)
                 actions = np.where(actions > np.pi, 0, actions)
                 actions = np.where(actions < -np.pi, 0, actions)
-                
+
                 if self.convert_to_eef_position:
                     actions[..., :14] = batch_qpos_to_eef_pos(actions[..., :14])
                 inputs[key] = actions.squeeze()

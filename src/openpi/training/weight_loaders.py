@@ -2,10 +2,12 @@ import dataclasses
 import logging
 import re
 from typing import Protocol, runtime_checkable
-import jax
+
 import flax.traverse_util
-import numpy as np
+import jax
 import jax.numpy as jnp
+import numpy as np
+
 import openpi.models.model as _model
 import openpi.shared.array_typing as at
 import openpi.shared.download as download
@@ -119,7 +121,6 @@ def _align_param(expected, loaded, init_method):
 
 
 def _merge_params(loaded_params: at.Params, params: at.Params, *, missing_regex: str, init="random") -> at.Params:
-
     flat_ref = flax.traverse_util.flatten_dict(params, sep=None)
     flat_loaded = flax.traverse_util.flatten_dict(loaded_params, sep=None)
 
@@ -156,18 +157,16 @@ def _merge_params(loaded_params: at.Params, params: at.Params, *, missing_regex:
         if not cloned:
             if init == "zeros":
                 result[k] = jnp.zeros(expected_param.shape, dtype=expected_param.dtype)
+            elif jax.numpy.issubdtype(expected_param.dtype, jax.numpy.floating):
+                result[k] = (
+                    jax.random.normal(jax.random.PRNGKey(0), expected_param.shape, dtype=expected_param.dtype) * 0.02
+                )
+            elif jax.numpy.issubdtype(expected_param.dtype, jax.numpy.integer):
+                result[k] = jax.random.randint(
+                    jax.random.PRNGKey(0), expected_param.shape, minval=0, maxval=100, dtype=expected_param.dtype
+                )
             else:
-                if jax.numpy.issubdtype(expected_param.dtype, jax.numpy.floating):
-                    result[k] = (
-                        jax.random.normal(jax.random.PRNGKey(0), expected_param.shape, dtype=expected_param.dtype)
-                        * 0.02
-                    )
-                elif jax.numpy.issubdtype(expected_param.dtype, jax.numpy.integer):
-                    result[k] = jax.random.randint(
-                        jax.random.PRNGKey(0), expected_param.shape, minval=0, maxval=100, dtype=expected_param.dtype
-                    )
-                else:
-                    result[k] = jnp.zeros(expected_param.shape, dtype=expected_param.dtype)
+                result[k] = jnp.zeros(expected_param.shape, dtype=expected_param.dtype)
             print(f"[WARN] Missing param {key_path}, init as {init}, {expected_param.shape}")
 
     return flax.traverse_util.unflatten_dict(result)

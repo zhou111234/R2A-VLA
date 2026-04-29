@@ -5,30 +5,31 @@ from collections.abc import Sequence
 import dataclasses
 import difflib
 import logging
-import pathlib
-from typing import Any, Protocol, TypeAlias, Dict, Union
 import os
-import numpy as np
+import pathlib
+from typing import Any, Protocol, TypeAlias
+
 import etils.epath as epath
 import flax.nnx as nnx
+import numpy as np
 from typing_extensions import override
 import tyro
 
+import openpi.models.acot_vla as acot_vla
+import openpi.models.acot_vla_mymodal as acot_vla_mymodal
 import openpi.models.model as _model
 import openpi.models.pi0 as pi0
 import openpi.models.pi0_fast as pi0_fast
-import openpi.models.acot_vla as acot_vla
-import openpi.models.acot_vla_mymodal as acot_vla_mymodal
-import openpi.policies.r2a_temporal_policy as r2a_temporal_policy
 import openpi.models.tokenizer as _tokenizer
-import openpi.policies.aloha_policy as aloha_policy
-import openpi.policies.droid_policy as droid_policy
-import openpi.policies.libero_policy as libero_policy
 import openpi.policies.agilex_policy as agilex_policy
+import openpi.policies.aloha_policy as aloha_policy
+import openpi.policies.arx_policy as arx_policy
+import openpi.policies.droid_policy as droid_policy
 import openpi.policies.go1_policy as go1_policy
 import openpi.policies.go2_policy as go2_policy
+import openpi.policies.libero_policy as libero_policy
+import openpi.policies.r2a_temporal_policy as r2a_temporal_policy
 import openpi.policies.vlabench_policy as vlabench_policy
-import openpi.policies.arx_policy as arx_policy
 import openpi.shared.download as _download
 import openpi.shared.normalize as _normalize
 import openpi.training.droid_rlds_dataset as droid_rlds_dataset
@@ -454,7 +455,7 @@ class LeRobotVLABenchDataConfig(DataConfigFactory):
 
 @dataclasses.dataclass(frozen=True)
 class LeRobotACOTVLABenchDataConfig(DataConfigFactory):
-    repo_id: Union[str, Sequence[str]] = "..."
+    repo_id: str | Sequence[str] = "..."
     extra_delta_transform: Sequence[bool] = (False, False)
     joint_action_shifts: Sequence[int] = (2, 1)
 
@@ -632,7 +633,7 @@ class LerobotACOTGo2DataConfig(DataConfigFactory):
     )
     action_mask: Sequence[int] = dataclasses.field(default_factory=lambda: _transforms.make_bool_mask(-16, 4, -1, 11))
     delta_action_mask: Sequence[int] = dataclasses.field(default_factory=lambda: _transforms.make_bool_mask(14, -18))
-    prompt_map_inject_to_training: Dict[str, Sequence[str]] = dataclasses.field(default_factory=lambda: {})
+    prompt_map_inject_to_training: dict[str, Sequence[str]] = dataclasses.field(default_factory=dict)
 
     @override
     def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
@@ -709,7 +710,7 @@ class LerobotACOTTemporalGo2DataConfig(DataConfigFactory):
     state_mask: Sequence[int] = dataclasses.field(default_factory=lambda: _transforms.make_bool_mask(-14, 2, 4, -1, 11))
     action_mask: Sequence[int] = dataclasses.field(default_factory=lambda: _transforms.make_bool_mask(-16, 4, -1, 11))
     delta_action_mask: Sequence[int] = dataclasses.field(default_factory=lambda: _transforms.make_bool_mask(14, -18))
-    prompt_map_inject_to_training: Dict[str, Sequence[str]] = dataclasses.field(default_factory=lambda: {})
+    prompt_map_inject_to_training: dict[str, Sequence[str]] = dataclasses.field(default_factory=dict)
 
     @override
     def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
@@ -755,7 +756,6 @@ class LeRobotACOTLiberoDataConfig(DataConfigFactory):
 
     @override
     def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
-
         repack_transform = _transforms.Group(
             inputs=[
                 _transforms.RepackTransform(
@@ -808,7 +808,6 @@ class LeRobotACOTLiberoPlusDataConfig(DataConfigFactory):
 
     @override
     def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
-
         repack_transform = _transforms.Group(
             inputs=[
                 _transforms.RepackTransform(
@@ -1327,10 +1326,9 @@ class TrainConfig:
         """Get the checkpoint directory for this config."""
         if not self.exp_name:
             raise ValueError("--exp_name must be set")
-        if not os.getenv("DEBUG_MODE", default=False) == "true":
+        if os.getenv("DEBUG_MODE", default=False) != "true":
             return (pathlib.Path(self.checkpoint_base_dir) / self.name / self.exp_name).resolve()
-        else:
-            return (pathlib.Path(self.checkpoint_base_dir) / self.name / "debug").resolve()
+        return (pathlib.Path(self.checkpoint_base_dir) / self.name / "debug").resolve()
 
     @property
     def trainable_filter(self) -> nnx.filterlib.Filter:
@@ -1715,9 +1713,9 @@ _CONFIGS = [
         ema_decay=0.999,
         weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=51_000,
-        save_interval=10000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1000,
-        num_workers=48 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
-        batch_size=128 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
+        save_interval=10000 if os.getenv("DEBUG_MODE", default=False) != "true" else 1000,
+        num_workers=48 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
+        batch_size=128 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
         freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
             freeze_vision=False, freeze_llm=True, freeze_dual_ae=[False, False]
         ),
@@ -1764,9 +1762,9 @@ _CONFIGS = [
         ema_decay=0.999,
         weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=61_000,
-        save_interval=10000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1000,
-        num_workers=48 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
-        batch_size=128 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
+        save_interval=10000 if os.getenv("DEBUG_MODE", default=False) != "true" else 1000,
+        num_workers=48 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
+        batch_size=128 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
         freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
             freeze_vision=False, freeze_llm=True, freeze_llm_embedder=False, freeze_dual_ae=[False, False]
         ),
@@ -1801,9 +1799,9 @@ _CONFIGS = [
         ema_decay=0.999,
         weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=101_000,
-        save_interval=20000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1000,
-        num_workers=48 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
-        batch_size=128 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
+        save_interval=20000 if os.getenv("DEBUG_MODE", default=False) != "true" else 1000,
+        num_workers=48 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
+        batch_size=128 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
         freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
             freeze_vision=False, freeze_llm=True, freeze_dual_ae=[False, False]
         ),
@@ -1854,9 +1852,9 @@ _CONFIGS = [
         ema_decay=0.999,
         weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=51_000,
-        save_interval=10000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1000,
-        num_workers=48 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
-        batch_size=128 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
+        save_interval=10000 if os.getenv("DEBUG_MODE", default=False) != "true" else 1000,
+        num_workers=48 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
+        batch_size=128 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
         freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
             freeze_vision=False, freeze_llm=True, freeze_dual_ae=[False, False]
         ),
@@ -1889,9 +1887,9 @@ _CONFIGS = [
         ema_decay=0.999,
         weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=51_000,
-        save_interval=10000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1000,
-        num_workers=48 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
-        batch_size=128 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
+        save_interval=10000 if os.getenv("DEBUG_MODE", default=False) != "true" else 1000,
+        num_workers=48 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
+        batch_size=128 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
         freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
             freeze_vision=False, freeze_llm=True, freeze_llm_embedder=False, freeze_dual_ae=[False, False]
         ),
@@ -1924,9 +1922,9 @@ _CONFIGS = [
         ema_decay=0.999,
         weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=240_000,
-        save_interval=30000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1000,
-        num_workers=48 if not os.getenv("DEBUG_MODE", default=False) == "true" else 48,
-        batch_size=128 if not os.getenv("DEBUG_MODE", default=False) == "true" else 128,
+        save_interval=30000 if os.getenv("DEBUG_MODE", default=False) != "true" else 1000,
+        num_workers=48 if os.getenv("DEBUG_MODE", default=False) != "true" else 48,
+        batch_size=128 if os.getenv("DEBUG_MODE", default=False) != "true" else 128,
         freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
             freeze_vision=False, freeze_llm=True, freeze_llm_embedder=False, freeze_dual_ae=[False, False]
         ),
@@ -1977,9 +1975,9 @@ _CONFIGS = [
         ema_decay=0.999,
         weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=51_000,
-        save_interval=10000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 200,
-        num_workers=48 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
-        batch_size=128 if not os.getenv("DEBUG_MODE", default=False) == "true" else 16,
+        save_interval=10000 if os.getenv("DEBUG_MODE", default=False) != "true" else 200,
+        num_workers=48 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
+        batch_size=128 if os.getenv("DEBUG_MODE", default=False) != "true" else 16,
         freeze_filter=acot_vla.ACOTConfig().get_freeze_filter(
             freeze_vision=False, freeze_llm=True, freeze_dual_ae=[False, False]
         ),
@@ -2101,9 +2099,9 @@ _CONFIGS = [
         ema_decay=0.999,
         weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/public/zhonglinqing/pkgs/pi05_model/params"),
         num_train_steps=50_000,
-        save_interval=5000 if not os.getenv("DEBUG_MODE", default=False) == "true" else 200,
-        num_workers=24 if not os.getenv("DEBUG_MODE", default=False) == "true" else 1,
-        batch_size=256 if not os.getenv("DEBUG_MODE", default=False) == "true" else 16,
+        save_interval=5000 if os.getenv("DEBUG_MODE", default=False) != "true" else 200,
+        num_workers=24 if os.getenv("DEBUG_MODE", default=False) != "true" else 1,
+        batch_size=256 if os.getenv("DEBUG_MODE", default=False) != "true" else 16,
         # You can select to freeze certain parts of the model during training by setting the corresponding flags to True
         freeze_filter=acot_vla.ACOTConfig(paligemma_variant="gemma_2b_lora").get_freeze_filter(
             freeze_vision=False, freeze_llm=True, freeze_llm_embedder=True, freeze_dual_ae=[False, False]
@@ -2201,6 +2199,123 @@ _CONFIGS = [
             joint_action_shifts=(2, 1),
             extra_delta_transform=(True, True),
             delta_action_mask=_transforms.make_bool_mask(14, -18),
+            num_history_frames=4,
+        ),
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,
+            peak_lr=5e-5,
+            decay_steps=1_000_000,
+            decay_lr=5e-5,
+        ),
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+        ema_decay=None,
+        weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/nas/pi05_model/params"),
+        num_train_steps=50_000,
+        log_interval=200,
+        save_interval=1000,
+        num_workers=4,
+        batch_size=4,
+        freeze_filter=acot_vla_mymodal.ACOTMyModalConfig(
+            paligemma_variant="gemma_2b_lora",
+        ).get_freeze_filter(
+            freeze_vision=False,
+            freeze_llm=True,
+            freeze_llm_embedder=True,
+            freeze_dual_ae=[False, False],
+            freeze_temporal=False,
+            freeze_noise_expert=False,
+        ),
+    ),
+    # ============ R2A to LIBERO Evaluation Config ============
+    # This config adapts R2A checkpoint (acot_r2a_mymodal_temporal_noise) for LIBERO evaluation.
+    # It uses the same model architecture but changes the input/output transforms for LIBERO compatibility.
+    TrainConfig(
+        name="acot_r2a_libero_eval",
+        model=acot_vla_mymodal.ACOTMyModalConfig(
+            coarse_action_horizon=30,
+            action_horizon=30,
+            paligemma_variant="gemma_2b_lora",
+            adopt_explicit_action_reasoner=True,
+            adopt_implicit_action_reasoner=True,
+            downsample_based_implicit_extractor=True,
+            num_history_frames=4,
+            temporal_encoder_layers=6,
+            adopt_noise_expert=True,
+        ),
+        # Use LIBERO data config for evaluation
+        data=LerobotACOTTemporalGo2DataConfig(
+            default_prompt="This is the R2A challenge with temporal encoding.",
+            repo_id=[],  # Empty for evaluation - no training data needed
+            assets=AssetsConfig(assets_dir="./assets", asset_id="acot_r2a_mymodal_temporal_noise/norm_stats"),
+            # Use the R2A to LIBERO input transform
+            repack_transforms=_transforms.Group(
+                inputs=[
+                    _transforms.RepackTransform(
+                        {
+                            "images": {
+                                "top_head": "observation.image",
+                                "hand_left": "observation.wrist_image",
+                                "hand_right": "observation.wrist_image",  # Duplicate wrist for right camera
+                            },
+                            "state": "observation.state",
+                            "prompt": "prompt",
+                        }
+                    )
+                ]
+            ),
+            base_config=DataConfig(prompt_from_hl_instruction=True),
+            joint_action_shifts=(2, 1),
+            extra_delta_transform=(True, True),
+            delta_action_mask=_transforms.make_bool_mask(14, -18),
+            num_history_frames=4,
+        ),
+        # Use the same weight loader as the original R2A model
+        lr_schedule=_optimizer.CosineDecaySchedule(
+            warmup_steps=10_000,
+            peak_lr=5e-5,
+            decay_steps=1_000_000,
+            decay_lr=5e-5,
+        ),
+        optimizer=_optimizer.AdamW(clip_gradient_norm=1.0),
+        ema_decay=None,
+        weight_loader=weight_loaders.ACOTCheckpointWeightLoader("/mnt/nas/pi05_model/params"),
+        num_train_steps=50_000,
+        log_interval=200,
+        save_interval=1000,
+        num_workers=4,
+        batch_size=4,
+        freeze_filter=acot_vla_mymodal.ACOTMyModalConfig(
+            paligemma_variant="gemma_2b_lora",
+        ).get_freeze_filter(
+            freeze_vision=False,
+            freeze_llm=True,
+            freeze_llm_embedder=True,
+            freeze_dual_ae=[False, False],
+            freeze_temporal=False,
+            freeze_noise_expert=False,
+        ),
+    ),
+    # ============ R2A to LIBERO Eval with Custom Policy Transform ============
+    # Alternative config using the dedicated LiberoR2AInputs/LiberoR2AOutputs transforms.
+    # This provides better control over the adaptation process.
+    TrainConfig(
+        name="acot_r2a_libero_eval_v2",
+        model=acot_vla_mymodal.ACOTMyModalConfig(
+            coarse_action_horizon=30,
+            action_horizon=30,
+            paligemma_variant="gemma_2b_lora",
+            adopt_explicit_action_reasoner=True,
+            adopt_implicit_action_reasoner=True,
+            downsample_based_implicit_extractor=True,
+            num_history_frames=4,
+            temporal_encoder_layers=6,
+            adopt_noise_expert=True,
+        ),
+        data=LerobotACOTTemporalGo2DataConfig(
+            default_prompt="This is the R2A challenge with temporal encoding.",
+            repo_id=[],
+            assets=AssetsConfig(assets_dir="./assets", asset_id="acot_r2a_mymodal_temporal_noise/norm_stats"),
+            base_config=DataConfig(prompt_from_hl_instruction=True),
             num_history_frames=4,
         ),
         lr_schedule=_optimizer.CosineDecaySchedule(

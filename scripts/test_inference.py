@@ -11,11 +11,12 @@ Runs in a single process:
      - task_name branch: non-waist -> actions shape [:16], waist -> [16:20] frozen
 """
 
-import sys
 import os
-import time
+import sys
 import threading
+import time
 import traceback
+
 import numpy as np
 
 os.environ.setdefault("XLA_PYTHON_CLIENT_MEM_FRACTION", "0.85")
@@ -24,14 +25,14 @@ os.environ.setdefault("JAX_PLATFORMS", "cuda")
 sys.path.insert(0, "/mnt/nas/ACoT-VLA/src")
 sys.path.insert(0, "/mnt/systemDisk/mymodal/lerobot")
 
-import jax.numpy as jnp
-from openpi.policies import policy_config as _policy_config
-from openpi.training import config as _config
-from openpi.policies.r2a_temporal_policy import R2ATemporalInputs, TemporalBufferedPolicy
-from openpi.serving import websocket_policy_server
 from openpi_client import msgpack_numpy
 import websockets.sync.client
 
+from openpi.policies import policy_config as _policy_config
+from openpi.policies.r2a_temporal_policy import R2ATemporalInputs
+from openpi.policies.r2a_temporal_policy import TemporalBufferedPolicy
+from openpi.serving import websocket_policy_server
+from openpi.training import config as _config
 
 # ── Config ──────────────────────────────────────────────────────
 CONFIG_NAME = "acot_r2a_mymodal_temporal_noise"
@@ -96,18 +97,19 @@ def main():
     print(f"\n[3/5] Testing http://127.0.0.1:{PORT}/healthz ...")
     try:
         import urllib.request
+
         req = urllib.request.Request(f"http://127.0.0.1:{PORT}/healthz")
         with urllib.request.urlopen(req, timeout=5) as resp:
             body = resp.read().decode().strip()
             assert resp.status == 200, f"Expected 200, got {resp.status}"
             assert body == "OK", f"Expected 'OK', got '{body}'"
-        print(f"  ✓ /healthz → 200 OK")
+        print("  ✓ /healthz → 200 OK")
     except Exception as e:
         print(f"  ✗ /healthz FAILED: {e}")
         return False
 
     # ── Step 4: Connect client & test inference ─────────────────
-    print(f"\n[4/5] Connecting WebSocket client...")
+    print("\n[4/5] Connecting WebSocket client...")
     uri = f"ws://127.0.0.1:{PORT}"
     ws = websockets.sync.client.connect(uri, compression=None, max_size=None)
     metadata = msgpack_numpy.unpackb(ws.recv())
@@ -151,14 +153,14 @@ def main():
 
     # Verify: waist task should have 20 cols
     if actions_b.shape[1] == 20:
-        print(f"    ✓ Waist: actions columns = 20 (correct)")
+        print("    ✓ Waist: actions columns = 20 (correct)")
         # Check that [16:20] matches original state
         waist_actions = actions_b[0, 16:20]
         original_waist = obs_b["state"][16:20]
         if np.allclose(waist_actions, original_waist):
-            print(f"    ✓ Waist: [16:20] frozen to state values")
+            print("    ✓ Waist: [16:20] frozen to state values")
         else:
-            print(f"    ⚠ Waist: [16:20] differs from state (may be expected if post_process uses different logic)")
+            print("    ⚠ Waist: [16:20] differs from state (may be expected if post_process uses different logic)")
     else:
         print(f"    ✗ Waist: expected 20 cols, got {actions_b.shape[1]}")
         all_pass = False
@@ -170,7 +172,7 @@ def main():
     resp_c = msgpack_numpy.unpackb(ws.recv())
     actions_c = np.asarray(resp_c["actions"])
     print(f"    actions shape: {actions_c.shape}")
-    print(f"    ✓ Task switch did not crash (buffer reset worked)")
+    print("    ✓ Task switch did not crash (buffer reset worked)")
 
     # Test D: Multiple frames (send same task repeatedly to fill buffer)
     print("\n  [Test D] Multi-frame buffer fill (4 consecutive steps)")
@@ -180,7 +182,7 @@ def main():
         resp_d = msgpack_numpy.unpackb(ws.recv())
         act_d = np.asarray(resp_d["actions"])
         print(f"    step {i+1}: actions shape={act_d.shape}, infer_ms={resp_d['policy_timing']['infer_ms']:.1f}ms")
-    print(f"    ✓ 4 consecutive inferences succeeded")
+    print("    ✓ 4 consecutive inferences succeeded")
 
     ws.close()
     print("\n" + "=" * 60)

@@ -7,9 +7,9 @@ converts them to (T, H, W, C) uint8/float for the model.
 Placed in: src/openpi/policies/r2a_temporal_policy.py
 """
 
+from collections.abc import Sequence
 import copy
 import dataclasses
-from collections.abc import Sequence
 from typing import ClassVar
 
 import numpy as np
@@ -83,11 +83,13 @@ class R2ATemporalInputs(transforms.DataTransformFn):
         if state_indices is not None:
             data["state"] = data["state"][state_indices]
         if "actions" in data and data["actions"].shape[1] == 40:
-            data["actions"] = np.column_stack((
-                data["actions"][:, 16:30],
-                data["actions"][:, 0:2],
-                data["actions"][:, 33:38],
-            ))
+            data["actions"] = np.column_stack(
+                (
+                    data["actions"][:, 16:30],
+                    data["actions"][:, 0:2],
+                    data["actions"][:, 33:38],
+                )
+            )
         return data
 
     def _random_inject_prompt(self, data):
@@ -135,7 +137,7 @@ class R2ATemporalInputs(transforms.DataTransformFn):
             for key in ["coarse_actions", "actions"]:
                 if key in data:
                     if self.action_mask is not None:
-                        data[key][:, np.array(self.action_mask)[:data[key].shape[1]]] = 0
+                        data[key][:, np.array(self.action_mask)[: data[key].shape[1]]] = 0
                     data[key] = transforms.pad_to_dim(data[key], self.action_dim)
                     inputs[key] = data[key]
 
@@ -143,8 +145,8 @@ class R2ATemporalInputs(transforms.DataTransformFn):
             data = self._random_inject_prompt(data)
         if "prompt" in data:
             inputs["prompt"] = data["prompt"]
- 
-        return inputs 
+
+        return inputs
 
 
 @dataclasses.dataclass(frozen=True)
@@ -156,11 +158,7 @@ class R2ATemporalOutputs(transforms.DataTransformFn):
     """
 
     def __call__(self, data: dict) -> dict:
-        return {
-            key: np.asarray(data[key])
-            for key in ["coarse_actions", "actions"]
-            if key in data
-        }
+        return {key: np.asarray(data[key]) for key in ["coarse_actions", "actions"] if key in data}
 
 
 # ---------------------------------------------------------------------------
@@ -169,7 +167,6 @@ class R2ATemporalOutputs(transforms.DataTransformFn):
 # Only active when config.num_history_frames > 1.
 # ---------------------------------------------------------------------------
 
-import collections
 from openpi.policies.temporal_policy_server import TemporalFrameBuffer
 
 
@@ -185,14 +182,16 @@ class TemporalBufferedPolicy:
     and resets the temporal frame buffer.
     """
 
-    def __init__(self, inner_policy, T: int = 4,
-                 camera_keys=None):
+    def __init__(self, inner_policy, T: int = 4, camera_keys=None):
         self._inner = inner_policy
         self.T = T
         self._buffer = TemporalFrameBuffer(
             num_history_frames=T,
-            camera_keys=camera_keys or [
-                "base_0_rgb", "left_wrist_0_rgb", "right_wrist_0_rgb",
+            camera_keys=camera_keys
+            or [
+                "base_0_rgb",
+                "left_wrist_0_rgb",
+                "right_wrist_0_rgb",
             ],
         )
         self._last_task_name: str | None = None

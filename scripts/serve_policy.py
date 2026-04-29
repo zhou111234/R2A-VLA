@@ -7,9 +7,10 @@ import tyro
 
 from openpi.policies import policy as _policy
 from openpi.policies import policy_config as _policy_config
+from openpi.policies.r2a_temporal_policy import R2ATemporalInputs
+from openpi.policies.r2a_temporal_policy import TemporalBufferedPolicy
 from openpi.serving import websocket_policy_server
 from openpi.training import config as _config
-from openpi.policies.r2a_temporal_policy import R2ATemporalInputs, TemporalBufferedPolicy
 
 
 class EnvMode(enum.Enum):
@@ -88,7 +89,7 @@ DEFAULT_CHECKPOINT: dict[EnvMode, Checkpoint] = {
     EnvMode.G2SIM: Checkpoint(
         config="acot_icra_simulation_challenge_reasoning_to_action",
         dir="./checkpoints/acot_icra_simulation_challenge_reasoning_to_action/exp_name/30000",
-    )
+    ),
 }
 
 

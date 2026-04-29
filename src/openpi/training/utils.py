@@ -4,8 +4,9 @@ from typing import Any
 from flax import nnx
 from flax import struct
 import jax
-import optax
 import jax.numpy as jnp
+import optax
+
 from openpi.models import model as _model
 from openpi.shared import array_typing as at
 
@@ -36,6 +37,7 @@ def tree_to_info(tree: at.PyTree, interp_func: Callable[[Any], str] = str) -> st
 def array_tree_to_info(tree: at.PyTree) -> str:
     """Converts a PyTree of arrays into a human-readable string for logging."""
     return tree_to_info(tree, lambda x: f"{x.shape}@{x.dtype}")
+
 
 def count_parameters(params):
     """Count total number of parameters in a JAX PyTree."""

@@ -69,6 +69,7 @@ def save_state(
     step: int,
 ):
     asset_dir = checkpoint_manager.directory / f"{step}" / "assets"
+
     def save_assets(directory: epath.Path = asset_dir):
         # Save the normalization stats.
         data_config = data_loader.data_config()
@@ -78,7 +79,7 @@ def save_state(
             # if isinstance(data_config.asset_id, list):
             #     _normalize.save(directory, norm_stats)
             # else:
-            #     # original, which cannot be used here since asset_ids now is an absolute path 
+            #     # original, which cannot be used here since asset_ids now is an absolute path
             #     _normalize.save(directory / data_config.asset_id, norm_stats)
 
     # Split params that can be used for inference into a separate item.

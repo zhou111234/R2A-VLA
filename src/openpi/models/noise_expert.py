@@ -11,8 +11,8 @@ Placed in: src/openpi/models/noise_expert.py
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
+import math
 
 import flax.linen as nn
 import jax

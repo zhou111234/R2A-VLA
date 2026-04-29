@@ -14,8 +14,8 @@ import torch
 import openpi.models.model as _model
 import openpi.training.config as _config
 from openpi.training.droid_rlds_dataset import DroidRldsDataset
-import openpi.transforms as _transforms
 from openpi.training.temporal_dataset import TemporalFrameWrapper
+import openpi.transforms as _transforms
 
 T_co = TypeVar("T_co", covariant=True)
 
@@ -43,11 +43,11 @@ class SafeDataset(Dataset):
         except Exception as e:
             print(f"[Data Load Error] Skipping index {index} due to: {e}")
             return None
-    
+
     def __getattr__(self, name):
-        if name == 'dataset':
+        if name == "dataset":
             raise AttributeError(f"'{type(self).__name__}' object has no attribute 'dataset'")
-        
+
         return getattr(self.dataset, name)
 
 
@@ -81,14 +81,13 @@ class TransformedDataset(Dataset[T_co]):
         if not hasattr(self._dataset, "_datasets"):
             item = self._dataset[index]
             return self._transform(item)
-        else:
-            idx = index.__index__()
-            for d in self._dataset._datasets:
-                if idx < len(d):
-                    item = d[idx]
-                    return self._transform(item)
-                idx -= len(d)
-            raise IndexError("Index out of range")
+        idx = index.__index__()
+        for d in self._dataset._datasets:
+            if idx < len(d):
+                item = d[idx]
+                return self._transform(item)
+            idx -= len(d)
+        raise IndexError("Index out of range")
 
     def __len__(self) -> int:
         if not hasattr(self._dataset, "_datasets"):
@@ -165,9 +164,7 @@ class FakeDataset(Dataset):
         return self._num_samples
 
 
-def create_torch_dataset(
-    data_config: _config.DataConfig, model_config: _model.BaseModelConfig
-) -> Dataset:
+def create_torch_dataset(data_config: _config.DataConfig, model_config: _model.BaseModelConfig) -> Dataset:
     """Create a dataset for training."""
     repo_id = data_config.repo_id
     if repo_id is None:
@@ -175,10 +172,12 @@ def create_torch_dataset(
     if repo_id == "fake":
         return FakeDataset(model_config, num_samples=1024)
 
-    if model_config.model_type == _model.ModelType.ACOT_VLA_PI0 or model_config.model_type == _model.ModelType.ACOT_VLA_PI05:
-
+    if (
+        model_config.model_type == _model.ModelType.ACOT_VLA_PI0
+        or model_config.model_type == _model.ModelType.ACOT_VLA_PI05
+    ):
         acot_action_horizons = jnp.array((model_config.coarse_action_horizon, model_config.action_horizon))
-        joint_action_shifts = jnp.array((data_config.joint_action_shifts))
+        joint_action_shifts = jnp.array(data_config.joint_action_shifts)
         action_chunk_size = max(acot_action_horizons * joint_action_shifts).item()
 
     else:
@@ -186,9 +185,7 @@ def create_torch_dataset(
 
     if isinstance(repo_id, list):
         # If repo_id is a list, create a dataset for each repo_id and concatenate them.
-        dataset_metas = [
-            lerobot_dataset.LeRobotDatasetMetadata(r) for r in repo_id
-        ]
+        dataset_metas = [lerobot_dataset.LeRobotDatasetMetadata(r) for r in repo_id]
         dataset = lerobot_dataset.MultiLeRobotDataset(
             repo_id,
             delta_timestamps={
@@ -205,7 +202,7 @@ def create_torch_dataset(
         if data_config.prompt_from_hl_instruction:
             for n, d in enumerate(dataset._datasets):
                 dataset._datasets[n] = TransformedDataset(
-                    d,[_transforms.PromptFromHighlevelInstruction(dataset_metas[n].info['instruction_segments'])]
+                    d, [_transforms.PromptFromHighlevelInstruction(dataset_metas[n].info["instruction_segments"])]
                 )
         for i, d in enumerate(dataset._datasets):
             print(f"Dataset {i} has {len(d)} frames.")
@@ -223,7 +220,9 @@ def create_torch_dataset(
         if data_config.prompt_from_task:
             dataset = TransformedDataset(dataset, [_transforms.PromptFromLeRobotTask(dataset_meta.tasks)])
         if data_config.prompt_from_hl_instruction:
-            dataset = TransformedDataset(dataset, [_transforms.PromptFromHighlevelInstruction(dataset_meta.info['instruction_segments'])])
+            dataset = TransformedDataset(
+                dataset, [_transforms.PromptFromHighlevelInstruction(dataset_meta.info["instruction_segments"])]
+            )
 
     return dataset
 
@@ -365,16 +364,15 @@ def create_torch_data_loader(
 
     num_hist = getattr(data_config, "num_history_frames", 1)
     if num_hist > 1:
-        logging.getLogger("data_loader").info(
-            f"Wrapping dataset with TemporalFrameWrapper (T={num_hist})"
-        )
+        logging.getLogger("data_loader").info(f"Wrapping dataset with TemporalFrameWrapper (T={num_hist})")
         dataset = TemporalFrameWrapper(dataset, num_history_frames=num_hist)
 
     dataset = transform_dataset(dataset, data_config, skip_norm_stats=skip_norm_stats)
 
     sampler = None
-    if data_config.dataloader_sampler != '':
+    if data_config.dataloader_sampler != "":
         from openpi.training.sampler import FrameSampler
+
         sampler = FrameSampler(dataset, data_config.dataloader_sampler)
         shuffle = False
 
@@ -387,13 +385,15 @@ def create_torch_data_loader(
         num_batches=num_batches,
         num_workers=num_workers,
         seed=seed,
-        sampler = sampler
+        sampler=sampler,
     )
 
-    if model_config.model_type == _model.ModelType.ACOT_VLA_PI0 or model_config.model_type == _model.ModelType.ACOT_VLA_PI05:
+    if (
+        model_config.model_type == _model.ModelType.ACOT_VLA_PI0
+        or model_config.model_type == _model.ModelType.ACOT_VLA_PI05
+    ):
         return DataLoaderACOTImpl(data_config, data_loader)
-    else:
-        return DataLoaderImpl(data_config, data_loader)
+    return DataLoaderImpl(data_config, data_loader)
 
 
 def create_rlds_data_loader(
@@ -445,7 +445,7 @@ class TorchDataLoader:
         num_batches: int | None = None,
         num_workers: int = 0,
         seed: int = 0,
-        sampler = None,
+        sampler=None,
     ):
         """Create a PyTorch data loader.
 
@@ -531,12 +531,12 @@ def _collate_fn(items):
         except ValueError as e:
             shapes = [x.shape for x in arrays]
             unique_shapes = set(shapes)
-            print(f"\n======== DEBUG ERROR ========")
-            print(f"Stacking failed!")
+            print("\n======== DEBUG ERROR ========")
+            print("Stacking failed!")
             print(f"Found varying shapes: {unique_shapes}")
             print(f"First 5 shapes: {shapes[:5]}")
             print(f"Sample data (first item): {arrays[0]}")
-            print(f"=============================\n")
+            print("=============================\n")
             raise e
 
     return jax.tree.map(debug_stack, *filter_items)
@@ -605,6 +605,7 @@ class DataLoaderImpl(DataLoader):
     def __iter__(self):
         for batch in self._data_loader:
             yield _model.Observation.from_dict(batch), batch["actions"]
+
 
 class DataLoaderACOTImpl(DataLoader):
     def __init__(self, data_config: _config.DataConfig, data_loader: TorchDataLoader):

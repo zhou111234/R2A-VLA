@@ -3,20 +3,20 @@ import logging
 import pathlib
 import time
 from typing import Any, TypeAlias
-import copy
+
 import flax
 import flax.traverse_util
 import jax
 import jax.numpy as jnp
 import numpy as np
 from openpi_client import base_policy as _base_policy
-from openpi.shared.array_typing import disable_typechecking
 from typing_extensions import override
 
 from openpi import transforms as _transforms
 from openpi.models import model as _model
 from openpi.shared import array_typing as at
 from openpi.shared import nnx_utils
+from openpi.shared.array_typing import disable_typechecking
 
 BasePolicy: TypeAlias = _base_policy.BasePolicy
 
@@ -48,15 +48,13 @@ class Policy(BasePolicy):
         inputs = jax.tree.map(lambda x: jnp.asarray(x)[np.newaxis, ...], inputs)
 
         start_time = time.monotonic()
-        self._rng, sample_rng = jax.random.split(self._rng)         
-        outputs = {
-            "state": inputs["state"]
-        }
+        self._rng, sample_rng = jax.random.split(self._rng)
+        outputs = {"state": inputs["state"]}
         with disable_typechecking():
             result = self._sample_actions(sample_rng, _model.Observation.from_dict(inputs), **self._sample_kwargs)
 
         if isinstance(result, dict):
-            outputs.update(result)    
+            outputs.update(result)
         else:
             outputs["actions"] = result
         # outputs["actions"] = inputs["actions"]
@@ -78,7 +76,9 @@ class Policy(BasePolicy):
         if task_name is None:
             return outputs
 
-        print(f"Policy infering for task: {task_name}, with inference time: {outputs['policy_timing']['infer_ms']:.3f} ms")
+        print(
+            f"Policy infering for task: {task_name}, with inference time: {outputs['policy_timing']['infer_ms']:.3f} ms"
+        )
         if task_name not in task_name_requiring_waist:
             # cut off waist actions for tasks that don't require it
             outputs["actions"] = outputs["actions"][:, :16]

@@ -19,20 +19,17 @@ import sys
 import time
 
 import flax.nnx as nnx
+import flax.traverse_util as traverse_util
 import jax
 import jax.numpy as jnp
 
-import openpi.models.model as _model
 import openpi.shared.array_typing as at
 import openpi.shared.nnx_utils as nnx_utils
+from openpi.training import checkpoints as _checkpoints
 import openpi.training.config as _config
 import openpi.training.optimizer as _optimizer
 import openpi.training.sharding as sharding
 import openpi.training.utils as training_utils
-import openpi.training.weight_loaders as _weight_loaders
-import flax.traverse_util as traverse_util
-import orbax.checkpoint as ocp
-from openpi.training import checkpoints as _checkpoints
 
 
 def init_logging():
@@ -172,8 +169,8 @@ def main():
     logging.info(f"  Restored! Time: {restore_time:.1f}s, Speed: {restore_speed:.0f} MB/s")
     logging.info(f"  Step={restored.step}, Params={restored_params:,}, ema_decay={restored.ema_decay}")
 
-    assert restored.step == train_state.step, f"Step mismatch"
-    assert restored_params == num_params, f"Param count mismatch"
+    assert restored.step == train_state.step, "Step mismatch"
+    assert restored_params == num_params, "Param count mismatch"
     logging.info("  Validation PASSED ✅")
 
     logging.info("=" * 60)

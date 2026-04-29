@@ -1,20 +1,19 @@
 """Policy transforms for the Go2 robot."""
 
+from collections.abc import Sequence
+import copy
 import dataclasses
 from typing import ClassVar
-from collections.abc import Sequence
+
 import numpy as np
 import torch
-import copy
 
-import openpi.models.model as _model
 import openpi.transforms as transforms
 
 
 @dataclasses.dataclass(frozen=True)
 class Go2Inputs(transforms.DataTransformFn):
-    """Inputs for the Go2 policy.
-    """
+    """Inputs for the Go2 policy."""
 
     # The action dimension of the model. Will be used to pad state and actions.
     action_dim: int
@@ -26,14 +25,9 @@ class Go2Inputs(transforms.DataTransformFn):
     # replaced with black images and the corresponding `image_mask` will be set to False.
     EXPECTED_CAMERAS: ClassVar[tuple[str, ...]] = ("top_head", "hand_left", "hand_right")
 
-    rename_map = {
-        "top_head": "base_0_rgb",
-        "hand_left": "left_wrist_0_rgb",
-        "hand_right": "right_wrist_0_rgb"
-    }
+    rename_map = {"top_head": "base_0_rgb", "hand_left": "left_wrist_0_rgb", "hand_right": "right_wrist_0_rgb"}
 
     def __call__(self, data: dict) -> dict:
-
         # Pad the proprioceptive input to the action dimension of the model
         state = transforms.pad_to_dim(data["state"], self.action_dim)
         state = copy.deepcopy(state)
@@ -65,7 +59,6 @@ class Go2Inputs(transforms.DataTransformFn):
         # Create image mask based on available cameras
         image_mask = {self.rename_map[camera]: np.True_ for camera in self.EXPECTED_CAMERAS}
 
-
         # Prepare inputs dictionary
         inputs = {
             "image": images,
@@ -77,10 +70,8 @@ class Go2Inputs(transforms.DataTransformFn):
         if "actions" in data:
             actions = data["actions"]
             if self.action_mask is not None:
-                actions[:, self.action_mask[:actions.shape[1]]] = 0
+                actions[:, self.action_mask[: actions.shape[1]]] = 0
             actions = transforms.pad_to_dim(actions, self.action_dim)
-
-
 
             inputs["actions"] = actions.squeeze()
 
@@ -96,13 +87,12 @@ class Go2Outputs(transforms.DataTransformFn):
     """Outputs for the Go2 policy."""
 
     def __call__(self, data: dict) -> dict:
-        return {"actions": np.asarray(data["actions"][:, :22])} 
+        return {"actions": np.asarray(data["actions"][:, :22])}
 
 
 @dataclasses.dataclass(frozen=True)
 class Go2ACOTInputs(transforms.DataTransformFn):
-    """Inputs for the Go2 policy.
-    """
+    """Inputs for the Go2 policy."""
 
     action_dim: int
 
@@ -112,11 +102,7 @@ class Go2ACOTInputs(transforms.DataTransformFn):
 
     EXPECTED_CAMERAS: ClassVar[tuple[str, ...]] = ("top_head", "hand_left", "hand_right")
 
-    rename_map = {
-        "top_head": "base_0_rgb",
-        "hand_left": "left_wrist_0_rgb",
-        "hand_right": "right_wrist_0_rgb"
-    }
+    rename_map = {"top_head": "base_0_rgb", "hand_left": "left_wrist_0_rgb", "hand_right": "right_wrist_0_rgb"}
     acot_action_generation: Sequence[Sequence[int]] | None = None
 
     def slice_state_and_action(self, data):
@@ -132,30 +118,307 @@ class Go2ACOTInputs(transforms.DataTransformFn):
 
         if "actions" in data:
             assert data["actions"].shape[1] == 40
-            data["actions"] = np.column_stack((data["actions"][:, 16:30], data["actions"][:, 0:2], data["actions"][:, 33:38]))
+            data["actions"] = np.column_stack(
+                (data["actions"][:, 16:30], data["actions"][:, 0:2], data["actions"][:, 33:38])
+            )
         return data
-    
+
     def random_inject_prompt(self, data):
         color_episode_pairs_for_task_sort_packages = {
-            'white': [
-                0, 9, 11, 15, 18, 19, 22, 34, 39, 41, 49, 52, 55, 62, 66, 68, 69, 73, 74, 81, 90, 96, 111, 120, 123, 125, \
-                126, 129, 137, 139, 145, 149, 156, 157, 158, 164, 166, 170, 185, 187, 188, 190, 202, 207, 208, 209, 211, \
-                213, 218, 220, 221, 226, 227, 228, 229, 230, 236, 246, 250, 251, 252, 260, 264, 266, 274, 275, 279, 282, 283
+            "white": [
+                0,
+                9,
+                11,
+                15,
+                18,
+                19,
+                22,
+                34,
+                39,
+                41,
+                49,
+                52,
+                55,
+                62,
+                66,
+                68,
+                69,
+                73,
+                74,
+                81,
+                90,
+                96,
+                111,
+                120,
+                123,
+                125,
+                126,
+                129,
+                137,
+                139,
+                145,
+                149,
+                156,
+                157,
+                158,
+                164,
+                166,
+                170,
+                185,
+                187,
+                188,
+                190,
+                202,
+                207,
+                208,
+                209,
+                211,
+                213,
+                218,
+                220,
+                221,
+                226,
+                227,
+                228,
+                229,
+                230,
+                236,
+                246,
+                250,
+                251,
+                252,
+                260,
+                264,
+                266,
+                274,
+                275,
+                279,
+                282,
+                283,
             ],
-            'red': [
-                1, 3, 5, 12, 13, 23, 24, 25, 26, 27, 28, 33, 38, 51, 53, 57, 58, 59, 61, 64, 76, 77, 80, 82, 84, 87, 91, 100, 102, 103, 105, \
-                110, 114, 116, 118, 128, 142, 143, 148, 150, 152, 162, 163, 165, 167, 168, 173, 174, 176, 179, 186, 191, 192, 194, 197, 199, \
-                205, 206, 214, 217, 222, 224, 234, 237, 238, 240, 241, 242, 243, 244, 247, 248, 253, 257, 262, 268, 270, 272, 273, 276, 277, 278, 284
+            "red": [
+                1,
+                3,
+                5,
+                12,
+                13,
+                23,
+                24,
+                25,
+                26,
+                27,
+                28,
+                33,
+                38,
+                51,
+                53,
+                57,
+                58,
+                59,
+                61,
+                64,
+                76,
+                77,
+                80,
+                82,
+                84,
+                87,
+                91,
+                100,
+                102,
+                103,
+                105,
+                110,
+                114,
+                116,
+                118,
+                128,
+                142,
+                143,
+                148,
+                150,
+                152,
+                162,
+                163,
+                165,
+                167,
+                168,
+                173,
+                174,
+                176,
+                179,
+                186,
+                191,
+                192,
+                194,
+                197,
+                199,
+                205,
+                206,
+                214,
+                217,
+                222,
+                224,
+                234,
+                237,
+                238,
+                240,
+                241,
+                242,
+                243,
+                244,
+                247,
+                248,
+                253,
+                257,
+                262,
+                268,
+                270,
+                272,
+                273,
+                276,
+                277,
+                278,
+                284,
             ],
-            'black': [
-                2, 14, 16, 17, 20, 29, 30, 31, 32, 37, 40, 42, 43, 44, 45, 46, 47, 48, 50, 56, 60, 65, 67, 70, 71, 72, 75, 78, 79, 83, 85, 88, \
-                92, 95, 97, 99, 104, 107, 109, 112, 115, 117, 119, 122, 124, 127, 131, 132, 140, 141, 146, 147, 151, 155, 159, 160, 171, 172, 175, \
-                177, 178, 180, 183, 184, 200, 203, 210, 212, 225, 233, 235, 245, 254, 255, 256, 259, 261, 263, 267, 269, 271, 280
+            "black": [
+                2,
+                14,
+                16,
+                17,
+                20,
+                29,
+                30,
+                31,
+                32,
+                37,
+                40,
+                42,
+                43,
+                44,
+                45,
+                46,
+                47,
+                48,
+                50,
+                56,
+                60,
+                65,
+                67,
+                70,
+                71,
+                72,
+                75,
+                78,
+                79,
+                83,
+                85,
+                88,
+                92,
+                95,
+                97,
+                99,
+                104,
+                107,
+                109,
+                112,
+                115,
+                117,
+                119,
+                122,
+                124,
+                127,
+                131,
+                132,
+                140,
+                141,
+                146,
+                147,
+                151,
+                155,
+                159,
+                160,
+                171,
+                172,
+                175,
+                177,
+                178,
+                180,
+                183,
+                184,
+                200,
+                203,
+                210,
+                212,
+                225,
+                233,
+                235,
+                245,
+                254,
+                255,
+                256,
+                259,
+                261,
+                263,
+                267,
+                269,
+                271,
+                280,
             ],
-            'yellow': [
-                4, 6, 7, 8, 10, 21, 35, 36, 54, 63, 86, 89, 93, 94, 98, 101, 106, 108, 113, 121, 130, 133, 134, 135, 136, 138, 144, 153, \
-                154, 161, 169, 181, 182, 189, 193, 195, 196, 198, 201, 204, 215, 216, 219, 223, 231, 232, 239, 249, 258, 265, 281, 285
-            ]
+            "yellow": [
+                4,
+                6,
+                7,
+                8,
+                10,
+                21,
+                35,
+                36,
+                54,
+                63,
+                86,
+                89,
+                93,
+                94,
+                98,
+                101,
+                106,
+                108,
+                113,
+                121,
+                130,
+                133,
+                134,
+                135,
+                136,
+                138,
+                144,
+                153,
+                154,
+                161,
+                169,
+                181,
+                182,
+                189,
+                193,
+                195,
+                196,
+                198,
+                201,
+                204,
+                215,
+                216,
+                219,
+                223,
+                231,
+                232,
+                239,
+                249,
+                258,
+                265,
+                281,
+                285,
+            ],
         }
 
         task_name = data["task"]
@@ -172,7 +435,7 @@ class Go2ACOTInputs(transforms.DataTransformFn):
 
             if np.random.rand() < inject_prob:
                 data["prompt"] = default_prompt
-    
+
         return data
 
     def __call__(self, data: dict) -> dict:
@@ -218,14 +481,14 @@ class Go2ACOTInputs(transforms.DataTransformFn):
                 required_length = (action_horizon - 1) * joint_action_shift + 1
                 data[key] = copy.deepcopy(raw_data[:required_length:joint_action_shift])
                 assert len(data[key]) == action_horizon
-        for key in ['coarse_actions', 'actions']:
+        for key in ["coarse_actions", "actions"]:
             if key in data:
                 if self.action_mask is not None:
-                    data[key][:, np.array(self.action_mask)[:data[key].shape[1]]] = 0
+                    data[key][:, np.array(self.action_mask)[: data[key].shape[1]]] = 0
                 data[key] = transforms.pad_to_dim(data[key], self.action_dim)
                 inputs[key] = data[key]
 
-        if "task" in data: # training
+        if "task" in data:  # training
             data = self.random_inject_prompt(data)
 
         if "prompt" in data:
@@ -239,5 +502,5 @@ class Go2ACOTOutputs(transforms.DataTransformFn):
     """Outputs for the Go2 policy."""
 
     def __call__(self, data: dict) -> dict:
-        keys = ['coarse_actions', 'actions']
+        keys = ["coarse_actions", "actions"]
         return {key: np.asarray(data[key][:, :21]) for key in keys if key in data}

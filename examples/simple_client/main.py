@@ -186,7 +186,7 @@ def _random_observation_libero() -> dict:
 
 def _random_observation_r2a() -> dict:
     """Generate random observation for R2A-VLA model.
-    
+
     R2A-VLA requires:
     - 3 cameras (top_head, hand_left, hand_right)
     - 4 history frames (temporal buffer)

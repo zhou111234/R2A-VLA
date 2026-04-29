@@ -33,10 +33,9 @@ def convert_str_keys_to_int(d):
                 new_k = k
             new_d[new_k] = convert_str_keys_to_int(v)
         return new_d
-    elif isinstance(d, (list, tuple)):
+    if isinstance(d, (list, tuple)):
         return type(d)(convert_str_keys_to_int(x) for x in d)
-    else:
-        return d
+    return d
 
 
 class ModelType(enum.Enum):

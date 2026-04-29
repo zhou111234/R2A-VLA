@@ -1,18 +1,18 @@
+from collections.abc import Sequence
+import copy
 import dataclasses
 
 import einops
 import numpy as np
-from collections.abc import Sequence
-import copy
+from scipy.spatial.transform import Rotation as R
 
 from openpi import transforms
 from openpi.models import model as _model
 
-from scipy.spatial.transform import Rotation as R
 
 def quat2euler(quat, is_degree=False):
     r = R.from_quat([quat[1], quat[2], quat[3], quat[0]])
-    euler_angles = r.as_euler('xyz', degrees=is_degree)  
+    euler_angles = r.as_euler("xyz", degrees=is_degree)
     return euler_angles
 
 
@@ -138,7 +138,7 @@ class VLABenchACOTInputs(transforms.DataTransformFn):
                 data[key] = copy.deepcopy(raw_data[:required_length:joint_action_shift])
                 assert len(data[key]) == action_horizon
 
-        for key in ['coarse_actions', 'actions']:
+        for key in ["coarse_actions", "actions"]:
             if key in data:
                 actions = transforms.pad_to_dim(data[key], self.action_dim)
                 inputs[key] = actions

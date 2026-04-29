@@ -8,7 +8,7 @@ to the config assets directory.
 import numpy as np
 import tqdm
 import tyro
-import random
+
 import openpi.models.model as _model
 import openpi.shared.normalize as normalize
 import openpi.training.config as _config
@@ -47,7 +47,7 @@ def create_torch_dataloader(
     else:
         num_batches = len(dataset) // batch_size
         shuffle = False
-    
+
     data_loader = _data_loader.TorchDataLoader(
         dataset,
         local_batch_size=batch_size,
@@ -95,9 +95,7 @@ def main(config_name: str, max_frames: int | None = None):
             data_config, config.model.action_horizon, config.batch_size, max_frames
         )
     else:
-        data_loader, num_batches = create_torch_dataloader(
-            data_config, config.batch_size, config.model, max_frames
-        )
+        data_loader, num_batches = create_torch_dataloader(data_config, config.batch_size, config.model, max_frames)
 
     keys = ["state", "actions", "coarse_actions"]
     stats = {key: normalize.RunningStats() for key in keys}
@@ -131,6 +129,7 @@ def main(config_name: str, max_frames: int | None = None):
     output_path = "./"
     print(f"Writing stats to: {output_path}")
     normalize.save(output_path, norm_stats)
+
 
 if __name__ == "__main__":
     tyro.cli(main)

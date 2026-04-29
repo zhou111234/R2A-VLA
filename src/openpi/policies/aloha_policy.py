@@ -1,9 +1,11 @@
+from collections.abc import Sequence
+import copy
 import dataclasses
-from typing import ClassVar, Sequence
+from typing import ClassVar
 
 import einops
 import numpy as np
-import copy
+
 from openpi import transforms
 
 
@@ -86,6 +88,7 @@ class AlohaInputs(transforms.DataTransformFn):
 
         return inputs
 
+
 @dataclasses.dataclass(frozen=True)
 class AlohaACOTInputs(transforms.DataTransformFn):
     """Inputs for the Aloha policy.
@@ -151,9 +154,11 @@ class AlohaACOTInputs(transforms.DataTransformFn):
                 joint_action_shift = joint_action_shifts[idx]
                 required_length = (action_horizon - 1) * joint_action_shift + 1
                 data[key] = copy.deepcopy(raw_data[:required_length:joint_action_shift])
-                assert len(data[key]) == action_horizon, f"Expected {action_horizon} actions, got {len(data[key])} for key {key}."
-        
-        for key in ['coarse_actions', 'actions']:
+                assert (
+                    len(data[key]) == action_horizon
+                ), f"Expected {action_horizon} actions, got {len(data[key])} for key {key}."
+
+        for key in ["coarse_actions", "actions"]:
             if key in data:
                 actions = np.asarray(data[key])
                 actions = _encode_actions_inv(actions, adapt_to_pi=self.adapt_to_pi)
@@ -178,6 +183,7 @@ class AlohaOutputs(transforms.DataTransformFn):
         actions = np.asarray(data["actions"][:, :14])
         return {"actions": _encode_actions(actions, adapt_to_pi=self.adapt_to_pi)}
 
+
 @dataclasses.dataclass(frozen=True)
 class AlohaACOTOutputs(transforms.DataTransformFn):
     """Outputs for the Aloha policy."""
@@ -188,8 +194,13 @@ class AlohaACOTOutputs(transforms.DataTransformFn):
 
     def __call__(self, data: dict) -> dict:
         # Only return the first 14 dims.
-        keys = ['coarse_actions', 'actions']
-        return {key: _encode_actions(np.asarray(data[key][:, :14]), adapt_to_pi=self.adapt_to_pi) for key in keys if key in data}
+        keys = ["coarse_actions", "actions"]
+        return {
+            key: _encode_actions(np.asarray(data[key][:, :14]), adapt_to_pi=self.adapt_to_pi)
+            for key in keys
+            if key in data
+        }
+
 
 def _joint_flip_mask() -> np.ndarray:
     """Used to convert between aloha and pi joint angles."""

@@ -11,10 +11,10 @@ Usage:
 import dataclasses
 import logging
 import os
-import pathlib
 import sys
 
 import flax.nnx as nnx
+import flax.traverse_util as traverse_util
 import jax
 import jax.numpy as jnp
 import optax
@@ -27,7 +27,6 @@ import openpi.training.optimizer as _optimizer
 import openpi.training.sharding as sharding
 import openpi.training.utils as training_utils
 import openpi.training.weight_loaders as _weight_loaders
-import flax.traverse_util as traverse_util
 
 
 def init_logging():

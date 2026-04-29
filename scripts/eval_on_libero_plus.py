@@ -1,9 +1,10 @@
 import collections
 import dataclasses
+import json
 import logging
 import math
 import pathlib
-import json
+
 import imageio
 from libero.libero import benchmark
 from libero.libero import get_libero_path
@@ -11,12 +12,12 @@ from libero.libero.envs import OffScreenRenderEnv
 import numpy as np
 from openpi_client import image_tools
 from openpi_client import websocket_client_policy as _websocket_client_policy
-
 import tqdm
 import tyro
 
 LIBERO_DUMMY_ACTION = [0.0] * 6 + [-1.0]
 LIBERO_ENV_RESOLUTION = 256  # resolution used to render training data
+
 
 @dataclasses.dataclass
 class Args:
@@ -34,7 +35,7 @@ class Args:
     task_suite_name: str = (
         "libero_spatial"  # Task suite. Options: libero_spatial, libero_object, libero_goal, libero_10, libero_90
     )
-    exp_name: str = ("debug")
+    exp_name: str = "debug"
     resume_id: int = 0
     num_steps_wait: int = 10  # Number of steps to wait for objects to stabilize i n sim
     num_trials_per_task: int = 1  # Number of rollouts per task
@@ -58,9 +59,9 @@ def eval_libero(args: Args) -> None:
     logging.info(f"Task suite: {args.task_suite_name}")
 
     if args.task_suite_name == "libero_spatial":
-        max_steps = 220 * 3 # longest training demo has 193 steps
+        max_steps = 220 * 3  # longest training demo has 193 steps
     elif args.task_suite_name == "libero_object":
-        max_steps = 280 * 3 # longest training demo has 254 steps
+        max_steps = 280 * 3  # longest training demo has 254 steps
     elif args.task_suite_name == "libero_goal":
         max_steps = 300 * 3  # longest training demo has 270 steps
     elif args.task_suite_name == "libero_10":
@@ -82,7 +83,7 @@ def eval_libero(args: Args) -> None:
     # load task classification file
     statics_per_category = {}
     name_to_category = {}
-    with open("LIBERO-plus/libero/libero/benchmark/task_classification.json", "r") as f:
+    with open("LIBERO-plus/libero/libero/benchmark/task_classification.json") as f:
         task_classification = json.load(f)
         items_in_category = task_classification[args.task_suite_name]
         for item in items_in_category:
@@ -203,7 +204,6 @@ def eval_libero(args: Args) -> None:
             logging.info(f"Success: {done}")
             logging.info(f"# episodes completed so far: {total_episodes}")
             logging.info(f"# successes: {total_successes} ({total_successes / total_episodes * 100:.1f}%)")
-
 
         # update statics per category
         category = name_to_category[task.name]

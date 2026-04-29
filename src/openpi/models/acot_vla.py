@@ -1,18 +1,18 @@
 import dataclasses
 import logging
-from typing import Any, Tuple, Optional, List, Sequence
-import copy
+
 import einops
 import flax.nnx as nnx
 import flax.nnx.bridge as nnx_bridge
 import jax
 import jax.numpy as jnp
 from typing_extensions import override
-import os
+
 from openpi.models import model as _model
 import openpi.models.gemma as _gemma
+from openpi.models.pi0 import make_attn_mask
+from openpi.models.pi0 import posemb_sincos
 import openpi.models.siglip as _siglip
-from openpi.models.pi0 import posemb_sincos, make_attn_mask
 from openpi.shared import array_typing as at
 import openpi.shared.nnx_utils as nnx_utils
 
@@ -38,8 +38,7 @@ class MLP(nnx.Module):
     def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
         if self.activate:
             return self.fc3(nnx.swish(self.fc2(nnx.swish(self.fc1(x)))))
-        else:
-            return self.fc3(self.fc2(self.fc1(x)))
+        return self.fc3(self.fc2(self.fc1(x)))
 
 
 class LearnableQueryExtractor(nnx.Module):
@@ -206,7 +205,6 @@ class DownsampleExtractor(nnx.Module):
         num_queries: int = 1,
         heads: int = 8,
     ):
-
         self.dim = dim
         self.depth = depth
         self.downsample_dim = downsample_dim
@@ -289,7 +287,6 @@ class UnifiedAttentionModule(nnx.Module):
         rngs: nnx.Rngs,
         param_dtype=jnp.float32,
     ):
-
         self.q_proj = nnx.Linear(in_features=in_dim_1, out_features=hidden_dim, rngs=rngs, param_dtype=param_dtype)
         self.kv_proj = nnx.Linear(in_features=in_dim_2, out_features=hidden_dim * 2, rngs=rngs, param_dtype=param_dtype)
         self.attn = nnx.MultiHeadAttention(
@@ -299,7 +296,6 @@ class UnifiedAttentionModule(nnx.Module):
         self.apply_sigmoid = apply_sigmoid
 
     def __call__(self, feat_1: jnp.ndarray, feat_2: jnp.ndarray, decode: bool = False) -> jnp.ndarray:
-
         Q = self.q_proj(feat_1)
         KV = self.kv_proj(feat_2)
         K, V = jnp.split(KV, 2, axis=-1)
@@ -347,8 +343,7 @@ class ACOTConfig(_model.BaseModelConfig):
     def model_type(self) -> _model.ModelType:
         if not self.pi05:
             return _model.ModelType.ACOT_VLA_PI0
-        else:
-            return _model.ModelType.ACOT_VLA_PI05
+        return _model.ModelType.ACOT_VLA_PI05
 
     @override
     def create(self, rng: at.KeyArrayLike) -> "ACOT_VLA":
@@ -417,8 +412,7 @@ class ACOTConfig(_model.BaseModelConfig):
 
         if not keep_alive_paths:
             return base_freeze_filter
-        else:
-            return nnx.All(base_freeze_filter, nnx.Not(nnx.Any(*keep_alive_paths)))
+        return nnx.All(base_freeze_filter, nnx.Not(nnx.Any(*keep_alive_paths)))
 
 
 class ACOT_VLA(_model.BaseModel):
@@ -617,8 +611,8 @@ class ACOT_VLA(_model.BaseModel):
         obs: _model.Observation,
         noisy_actions,
         timestep: at.Float[at.Array, " b"],
-        explicit_action_reason: Optional[jax.Array] = None,
-        implicit_action_reason: Optional[jax.Array] = None,
+        explicit_action_reason: jax.Array | None = None,
+        implicit_action_reason: jax.Array | None = None,
         suf_type="reasoner",
     ) -> tuple[
         at.Float[at.Array, "b s emb"],
@@ -771,7 +765,6 @@ class ACOT_VLA(_model.BaseModel):
         *,
         train: bool = False,
     ) -> at.Float[at.Array, "*b ah"]:
-
         # preprocess_rng, _, time_rng, coarse_action_noise_rng, _, expert_action_noise_rng = jax.random.split(rng, 6)
         preprocess_rng, time_rng, coarse_action_noise_rng, expert_action_noise_rng = jax.random.split(rng, 4)
         observation = _model.preprocess_observation(preprocess_rng, observation, train=train)
@@ -862,10 +855,9 @@ class ACOT_VLA(_model.BaseModel):
             # Since we set the balance factor as 0.5, the following loss is equal
             return jnp.mean(jnp.square(action_diff_ref)) + jnp.mean(jnp.square(action_diff_expert))
 
-        else:
-            v_expert_t = self.action_out_proj(suffix_expert_out[:, -self.action_horizon :])
-            action_diff_expert = u_expert_t - v_expert_t
-            return jnp.mean(jnp.square(action_diff_expert))
+        v_expert_t = self.action_out_proj(suffix_expert_out[:, -self.action_horizon :])
+        action_diff_expert = u_expert_t - v_expert_t
+        return jnp.mean(jnp.square(action_diff_expert))
 
     @override
     def sample_actions(
@@ -976,5 +968,4 @@ class ACOT_VLA(_model.BaseModel):
 
         if self.adopt_explicit_action_reasoner:
             return {"actions": x_0_expert, "coarse_actions": explicit_action_reason}
-        else:
-            return {"actions": x_0_expert}
+        return {"actions": x_0_expert}

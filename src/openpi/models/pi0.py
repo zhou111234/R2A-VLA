@@ -123,7 +123,7 @@ class Pi0Config(_model.BaseModelConfig):
 
         return observation_spec, action_spec
 
-    def get_freeze_filter(self, freeze_llm = False, freeze_vision = False) -> nnx.filterlib.Filter:
+    def get_freeze_filter(self, freeze_llm=False, freeze_vision=False) -> nnx.filterlib.Filter:
         """Returns the freeze filter based on the model config."""
         filters = []
         has_lora = False

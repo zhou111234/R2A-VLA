@@ -1,9 +1,10 @@
 import dataclasses
 import functools
 import logging
+import os
 import platform
 from typing import Any
-import os
+
 import etils.epath as epath
 import flax.nnx as nnx
 from flax.training import common_utils
@@ -167,10 +168,12 @@ def train_step(
 
     new_state = dataclasses.replace(state, step=state.step + 1, params=new_params, opt_state=new_opt_state)
     if state.ema_decay is not None:
+
         def _ema_update(old, new):
-            if hasattr(old, 'dtype') and jax.numpy.issubdtype(old.dtype, jax.numpy.floating):
+            if hasattr(old, "dtype") and jax.numpy.issubdtype(old.dtype, jax.numpy.floating):
                 return state.ema_decay * old + (1 - state.ema_decay) * new
             return new
+
         new_state = dataclasses.replace(
             new_state,
             ema_params=jax.tree.map(
@@ -236,10 +239,12 @@ def acot_train_step(
 
     new_state = dataclasses.replace(state, step=state.step + 1, params=new_params, opt_state=new_opt_state)
     if state.ema_decay is not None:
+
         def _ema_update(old, new):
-            if hasattr(old, 'dtype') and jax.numpy.issubdtype(old.dtype, jax.numpy.floating):
+            if hasattr(old, "dtype") and jax.numpy.issubdtype(old.dtype, jax.numpy.floating):
                 return state.ema_decay * old + (1 - state.ema_decay) * new
             return new
+
         new_state = dataclasses.replace(
             new_state,
             ema_params=jax.tree.map(
@@ -290,7 +295,7 @@ def main(config: _config.TrainConfig):
     checkpoint_manager, resuming = _checkpoints.initialize_checkpoint_dir(
         config.checkpoint_dir,
         keep_period=config.keep_period,
-        overwrite=config.overwrite if not os.getenv("DEBUG_MODE", default=False) == "true" else True,
+        overwrite=config.overwrite if os.getenv("DEBUG_MODE", default=False) != "true" else True,
         resume=config.resume,
     )
     init_wandb(config, resuming=resuming, enabled=config.wandb_enabled)

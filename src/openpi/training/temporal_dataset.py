@@ -69,10 +69,7 @@ class TemporalFrameWrapper:
         for k, v in sample.items():
             if not isinstance(v, (torch.Tensor, np.ndarray)):
                 continue
-            if isinstance(v, torch.Tensor) and v.ndim >= 3:
-                if v.shape[0] == 3 or v.shape[-1] == 3:
-                    keys.append(k)
-            elif isinstance(v, np.ndarray) and v.ndim >= 3:
+            if (isinstance(v, torch.Tensor) and v.ndim >= 3) or (isinstance(v, np.ndarray) and v.ndim >= 3):
                 if v.shape[0] == 3 or v.shape[-1] == 3:
                     keys.append(k)
         logger.info(f"TemporalFrameWrapper detected camera keys: {keys}")
