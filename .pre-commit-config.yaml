@@ -10,9 +10,9 @@ repos:
     # Ruff version.
     rev: v0.8.6
     hooks:
-      # Run the linter.
+      # Run the linter - use ruff-ci.toml which has ignore rules for style warnings
       - id: ruff
-        args: [--fix]
+        args: [--fix, --config=ruff-ci.toml]
         exclude: .*\.Dockerfile$|Dockerfile\..*|.*test.*\.py$|test_.*\.py$
       - id: ruff-format
         exclude: .*\.Dockerfile$|Dockerfile\..*|.*test.*\.py$|test_.*\.py$
